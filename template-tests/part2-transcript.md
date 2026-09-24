@@ -29,10 +29,10 @@ cargo build --release
       Adding bincode v2.0.1 (available: v3.0.0)
       Adding generic-array v0.14.7 (available: v0.14.9)
       Adding signal-hook v0.3.18 (available: v0.4.4)
-   Compiling p2-app v0.1.0 (/home/claude/scratch/uc_starter-gen/t8c/p2-app)
+   Compiling p2-app v0.1.0 (~/scratch/uc_starter-gen/t8c/p2-app)
     Finished `release` profile [optimized] target(s) in 2.28s
 scripts/cluster.sh up 
-p2-app cluster: root=/home/claude/scratch/t8c-root
+p2-app cluster: root=~/scratch/t8c-root
 1. nodes
    started node0 (pid 733803)
    started node1 (pid 733807)
@@ -67,7 +67,7 @@ scripts/snapshot-drill.sh
 2. all three nodes hold the complete set at P
 3. SIGKILLed service 1 and restarted it — its in-memory state is gone
 4. service 1 replayed the journal (it still reaches back past P, so no install was needed) and the value reads back
-   log: p2-app-service: attached fsm="p2" version=1.0.0 row=0 epoch=2 instance_dir=/home/claude/scratch/t8c-root/n1
+   log: p2-app-service: attached fsm="p2" version=1.0.0 row=0 epoch=2 instance_dir=~/scratch/t8c-root/n1
 PASS
 [exit 0]
 
@@ -97,9 +97,9 @@ warning: default toolchain implicitly overridden with `1.96.0-x86_64-unknown-lin
     Updating crates.io index
     Updating crates.io index
     Finished `release` profile [optimized] target(s) in 2.22s
-  Installing /home/claude/scratch/uc_starter-gen/t8c/p2-app/.uc/cargo/bin/uc2-diffreplay
+  Installing ~/scratch/uc_starter-gen/t8c/p2-app/.uc/cargo/bin/uc2-diffreplay
    Installed package `uc_diffreplay v2.13.0` (executable `uc2-diffreplay`)
-warning: be sure to add `/home/claude/scratch/uc_starter-gen/t8c/p2-app/.uc/cargo/bin` to your PATH to be able to run the installed binaries
+warning: be sure to add `~/scratch/uc_starter-gen/t8c/p2-app/.uc/cargo/bin` to your PATH to be able to run the installed binaries
 [exit 0]
 
 $ sed -i '/^expect "get greeting (deleted)"/a expect "put padded (spaces)"     "ok previous="      put padded "  spaced  "\nexpect "put padded again"        "ok previous=\\"  spaced  \\"" put padded again' scripts/demo.sh && grep -n padded scripts/demo.sh && make demo | tail -3
@@ -226,7 +226,7 @@ PASS — every difference is declared and attributed
 
 $ make upgrade-drill </dev/null
 scripts/upgrade-drill.sh
-About to upgrade row 0 (p2) from 1.0.0 to 1.1.0 on the local cluster at /home/claude/scratch/t8c-root.
+About to upgrade row 0 (p2) from 1.0.0 to 1.1.0 on the local cluster at ~/scratch/t8c-root.
 After the pin commits there is NO unpin: the old binary is refused by name,
 and the only way back is restoring the backups this script takes first.
 upgrade-drill.sh: not a terminal and UC_CONFIRM_PIN != yes — refusing to pin
@@ -234,7 +234,7 @@ make: *** [Makefile:60: upgrade-drill] Error 3
 [exit 2]
 
 $ scripts/upgrade-drill.sh </dev/null; echo script-exit=$?
-About to upgrade row 0 (p2) from 1.0.0 to 1.1.0 on the local cluster at /home/claude/scratch/t8c-root.
+About to upgrade row 0 (p2) from 1.0.0 to 1.1.0 on the local cluster at ~/scratch/t8c-root.
 After the pin commits there is NO unpin: the old binary is refused by name,
 and the only way back is restoring the backups this script takes first.
 upgrade-drill.sh: not a terminal and UC_CONFIRM_PIN != yes — refusing to pin
@@ -248,7 +248,7 @@ script-exit=3
 
 $ echo nope | script -qec 'scripts/upgrade-drill.sh' /dev/null; echo
 nope
-About to upgrade row 0 (p2) from 1.0.0 to 1.1.0 on the local cluster at /home/claude/scratch/t8c-root.
+About to upgrade row 0 (p2) from 1.0.0 to 1.1.0 on the local cluster at ~/scratch/t8c-root.
 After the pin commits there is NO unpin: the old binary is refused by name,
 and the only way back is restoring the backups this script takes first.
 Type PIN to continue: upgrade-drill.sh: not confirmed — nothing was changed
@@ -268,11 +268,11 @@ script-exit=3
 
 $ UC_CONFIRM_PIN=yes make upgrade-drill
 scripts/upgrade-drill.sh
-About to upgrade row 0 (p2) from 1.0.0 to 1.1.0 on the local cluster at /home/claude/scratch/t8c-root.
+About to upgrade row 0 (p2) from 1.0.0 to 1.1.0 on the local cluster at ~/scratch/t8c-root.
 After the pin commits there is NO unpin: the old binary is refused by name,
 and the only way back is restoring the backups this script takes first.
 1. origin instant P=1600, complete on every node
-2. backups in /home/claude/scratch/t8c-root/backups/n*-pre-1.1.0-20260924-162114 (your rollback point; a running node backs up fine)
+2. backups in ~/scratch/t8c-root/backups/n*-pre-1.1.0-20260924-162114 (your rollback point; a running node backs up fine)
 3. pinned: row=0 from=1.0.0 to=1.1.0 origin=1600 position=1760
 4. every node shows the pin (pinned=1.1.0 upgrade_origin=1600)
 5. stopped every service (all of them, before starting any)
@@ -479,10 +479,10 @@ cargo build --release
       Adding bincode v2.0.1 (available: v3.0.0)
       Adding generic-array v0.14.7 (available: v0.14.9)
       Adding signal-hook v0.3.18 (available: v0.4.4)
-   Compiling p2-app v0.1.0 (/home/claude/scratch/uc_starter-gen/t8e/p2-app)
+   Compiling p2-app v0.1.0 (~/scratch/uc_starter-gen/t8e/p2-app)
     Finished `release` profile [optimized] target(s) in 2.89s
 scripts/cluster.sh up 
-p2-app cluster: root=/home/claude/scratch/t8e-root
+p2-app cluster: root=~/scratch/t8e-root
 1. nodes
    started node0 (pid 760214)
    started node1 (pid 760218)
@@ -504,7 +504,7 @@ up. try: make demo
 $ sed -i 's/previous: self.state.entries.insert(key, value),/previous: self.state.entries.insert(key, value.trim().to_string()),/' src/state.rs && git diff --stat && cargo build --release -q && S=$(cargo metadata --format-version=1 --no-deps | sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')/release/p2-app-service && readlink /proc/$(cat $UC_ROOT/pids/service0.pid)/exe && sha256sum $S /proc/$(cat $UC_ROOT/pids/service0.pid)/exe | cut -c1-16
  src/state.rs | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
-/home/claude/.cache/cargo-target/release/p2-app-service (deleted)
+~/.cache/cargo-target/release/p2-app-service (deleted)
 c6289e053bf206a8
 1123db4f6d1cdb2f
 [exit 0]

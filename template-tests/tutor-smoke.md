@@ -19,7 +19,7 @@ declined to guess the step — the protocol's "never infer the step" held.
 2. `{"command": "scripts/next.sh --json", "description": "Compute the current tutorial step"}`
 3. `{"command": "awk '/^### Step 2/{p=1} /^### Step 3/{p=0} p' WHAT-NEXT.md", "description": "Show Step 2 section of WHAT-NEXT.md"}`
 4. `{"command": "grep -n '^### Step' WHAT-NEXT.md", "description": "Find step headings in WHAT-NEXT.md"}`
-5. `{"file_path": "/home/claude/scratch/uc_starter-gen/smoke/demo-app/WHAT-NEXT.md", "offset": 55, "limit": 39}`
+5. `{"file_path": "~/scratch/uc_starter-gen/smoke/demo-app/WHAT-NEXT.md", "offset": 55, "limit": 39}`
 
 (Call 1 is the `next` skill; call 3, an `awk` read, needed approval and was
 replaced by a `grep` and a `Read`.)

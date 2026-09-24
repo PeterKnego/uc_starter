@@ -10,7 +10,8 @@ through Part 1, using only the generated project's own files.
   from uc_starter `main` at `e1c0758`; project at `~/scratch/uc_starter-cleanroom/stock-app`,
   baseline commit `init`. `make bins` NOT pre-run.
 - `.claude/settings.json` as generated, plus `permissions.deny`:
-  `Read(//home/claude/ultima/**)`, `Read(//home/claude/.claude/projects/**)`.
+  two `Read(…)` deny rules covering the maintainer's own source checkouts and the
+  Claude Code session-memory directory.
 - Tutor launched from the project dir:
   `claude -p "<msg>" [--resume <sid>] --output-format json --permission-mode acceptEdits --allowedTools Bash Read Edit Write Glob Grep`
   (no permission bypass). One session, `e8c03c60-1d8a-4c8a-97d9-20083a4db73a`, 38 turns.
@@ -64,7 +65,7 @@ any turn (checked against the session's tool-call log).
 - **T22** → `next.sh --json`; asked; named the check (`cargo test --lib` + lint).
 - **T23** do → implemented state/apply/query/project; check (see table); wrote and deleted a throwaway behaviour test; subagent review.
 - **T24** → `next.sh --json` + Step 7 text; asked.
-- **T25–T30** guide → `arb_command` (then a throwaway tally test showed 45 % `Invalid`; suggested weighting), `tests/state.rs` (tutor planted 3 mutations to prove the tests catch bugs, backup at `/home/claude/state.rs.bak`, removed), `tests/snapshot.rs`, `tests/cli.rs` (caught that `get` would now fail as an unknown subcommand → a test passing for the wrong reason). Developer's `make check` failed on `cargo fmt --check`; tutor explained the hook only formats agent edits.
+- **T25–T30** guide → `arb_command` (then a throwaway tally test showed 45 % `Invalid`; suggested weighting), `tests/state.rs` (tutor planted 3 mutations to prove the tests catch bugs, backup at `~/state.rs.bak`, removed), `tests/snapshot.rs`, `tests/cli.rs` (caught that `get` would now fail as an unknown subcommand → a test passing for the wrong reason). Developer's `make check` failed on `cargo fmt --check`; tutor explained the hook only formats agent edits.
 - **T31** → `next.sh --json` (stamp matched), `cargo fmt --check`.
 - **T32** → `next.sh --json` + Step 8 text; asked.
 - **T33** do → exit code 3 for a rejected ship, re-runnable `demo.sh`, `make check`, `make down`, `make up FRESH=1`, `make demo` ×2 PASS, `next.sh`. Found that `snapshot-drill.sh` and `upgrade-drill.sh` still use skeleton `put`/`get` with no `TODO(app)` marker.
@@ -82,7 +83,7 @@ any turn (checked against the session's tool-call log).
 5. **`make check` gives no success line.** Its last visible output is the `scripts/lint-determinism.sh --all` command; a developer cannot tell it passed (or that the proof was stamped) without `echo $?` or `next.sh`.
 6. **Template-test residue in the generated project:** `src/lib.rs` begins with `LITERAL-CHECK {{not_a_placeholder}} — this line proves the generator copies Rust sources verbatim (template-tests/generator.sh). Leave it.` — meaningless and confusing to a developer (template-tests/ is not in their project).
 7. **`src/state.rs:43` says "use `uc_service::IdGen`"** while WHAT-NEXT/AGENTS say `ctx.ids()`; the tutor had to read the crate source in `~/.cargo/registry` to reconcile them.
-8. **The tutor writes scratch outside the project** (`mktemp -d` cargo crate in /tmp in T14; `/home/claude/state.rs.bak` in T28, both cleaned up). Harmless here, but AGENTS.md gives no rule to keep scratch inside the project.
+8. **The tutor writes scratch outside the project** (`mktemp -d` cargo crate in /tmp in T14; `~/state.rs.bak` in T28, both cleaned up). Harmless here, but AGENTS.md gives no rule to keep scratch inside the project.
 9. **`term=6` after one `make kill-leader`** (terms 2–5 leaderless). The tutor honestly called it unexplained; a developer seeing it with no explanation may think something is wrong. Not a template defect — possibly worth a UC-side look.
 10. `Cargo.lock` is untracked after the first build (not in the generated baseline, not ignored) while `make lint` uses `--locked`; nothing tells the developer to commit it. Minor.
 
@@ -90,7 +91,7 @@ What went well (for balance): the tutor ran `next.sh` at the start of every step
 
 ## Clean-room audit
 
-`scripts/dogfood_audit.py` (ultima_cluster) over the tutor session + both subagent transcripts
+The maintainer's transcript-audit script, run over the tutor session + both subagent transcripts
 (3 transcripts, 112 tool uses). The unmodified tool reports **VOID**, but every FORBIDDEN hit is
 either the sandbox itself or the published crate source:
 
@@ -105,9 +106,10 @@ Re-run with only the `/scratch` pattern narrowed to exclude the sandbox: still V
 registry reads + the skills false positive. Re-run additionally treating `~/.cargo/registry/src`
 as benign: only the `.claude/skills` in-sandbox false positive remains. Remaining OUTSIDE paths,
 judged: `~/.uc-starter/stock-app/logs` (the project's own cluster root — benign),
-`/home/claude/state.rs.bak` (a file the tutor itself created and deleted — benign, hygiene note),
+`~/state.rs.bak` (a file the tutor itself created and deleted — benign, hygiene note),
 the rest are regex/sed tokens (`/---`, `/fn`, `/p`, `//g`, `/if`, ...). A grep of all three
-transcripts finds **zero** references to `/ultima/` and none to `~/.claude/projects`.
+transcripts finds **zero** references to the maintainer's source checkouts and none to the
+session-memory directory.
 Judged verdict: **JUDGE → all benign** (no forbidden read attempted or succeeded).
 
 ## Full transcript (developer messages and tutor replies, verbatim)
@@ -142,7 +144,7 @@ Step 1 is done. `git status` stays clean because everything `make bins` wrote we
 $ uname -sm; cargo --version; command -v cosign; cat UC_VERSION
 Linux x86_64
 cargo 1.96.0 (30a34c682 2026-05-25)
-/home/claude/.local/bin/cosign
+~/.local/bin/cosign
 2.13.0
 ```
 - **Linux x86_64:** UC nodes run only on Linux, because node, service and client share file-backed memory with futex wakeups. You're on a supported host, so you don't need the devcontainer.
