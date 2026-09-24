@@ -75,4 +75,42 @@ set -e
 [ "$rc" -ne 0 ] || fail "uc-upgrade.sh 9.9.9 without UC_UPGRADE_SKIP_INDEX should refuse — 9.9.9 is not a real ultima_cluster release"
 [[ "$out" == *"9.9.9"* ]] || fail "failure message should name the missing version: $out"
 
+# --- C2: a failure after the checks restores EVERYTHING (no partial state) --
+# 9.9.9 "exists" per a local fixture index, so the checks pass and the files
+# are rewritten; then `cargo update` fails (no such crate version), and every
+# file must come back exactly as it was.
+rm -rf "$B/partial"; "$HERE/gen.sh" "$B/partial" >/dev/null; cd "$B/partial/demo-app"
+cargo generate-lockfile -q 2>/dev/null || cargo metadata --format-version 1 >/dev/null
+before="$(snapshot)"; lock_before="$(sha256sum Cargo.lock)"
+set +e
+out="$(UC_UPGRADE_INDEX_URL="file://$HERE/fixtures/uc_service-9.9.9.jsonl" scripts/uc-upgrade.sh 9.9.9 2>&1)"; rc=$?
+set -e
+[ "$rc" -ne 0 ] || fail "uc-upgrade.sh 9.9.9 should fail at cargo update (9.9.9 is not a real crate version)"
+[[ "$out" == *"cargo update failed"* && "$out" == *restored* ]] || fail "failure should say cargo update failed and that files were restored: $out"
+[ "$(cat UC_VERSION)" = 2.13.0 ] || fail "UC_VERSION left at $(cat UC_VERSION) after a failed upgrade"
+[ "$(snapshot)" = "$before" ] || fail "a failed upgrade left docs/pins partly rewritten"
+[ "$(sha256sum Cargo.lock)" = "$lock_before" ] || fail "a failed upgrade changed Cargo.lock"
+ls -d .uc/uc-upgrade-backup.* >/dev/null 2>&1 && fail "backup directory left behind"
+
+# --- C2: the RAW template (the UC release step runs it there) ---------------
+# Cargo.toml still says name = "{{project-name}}": no cargo update, but the
+# crates.io check, the pins and the links all move — and template-tests/
+# (dated records) is never rewritten.
+RAW="$B/raw"; rm -rf "$RAW"; mkdir -p "$RAW"
+(cd "$HERE/.." && git ls-files -z | xargs -0 -I{} cp --parents {} "$RAW/")
+cd "$RAW"
+grep -q '{{project-name}}' Cargo.toml || fail "raw copy is not the raw template"
+tt_before="$(find template-tests -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum)"
+set +e
+out="$(UC_UPGRADE_INDEX_URL="file://$HERE/fixtures/uc_service-9.9.9.jsonl" scripts/uc-upgrade.sh 9.9.9 2>&1)"; rc=$?
+set -e
+[ "$rc" = 0 ] || fail "uc-upgrade.sh in the raw template failed (rc=$rc): $out"
+[[ "$out" == *"raw template"* ]] || fail "raw-template run should say it skips cargo update: $out"
+[ "$(cat UC_VERSION)" = 9.9.9 ] || fail "raw template: UC_VERSION not moved"
+[ "$(grep -c '"=9\.9\.9"' Cargo.toml)" = 4 ] || fail "raw template: the four pins did not move"
+grep -q 'blob/v9\.9\.9/' WHAT-NEXT.md || fail "raw template: links did not move"
+[ ! -e Cargo.lock ] || fail "raw template: a Cargo.lock appeared"
+tt_after="$(find template-tests -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum)"
+[ "$tt_before" = "$tt_after" ] || fail "raw template: template-tests/ was rewritten"
+
 echo "uc-upgrade: PASS"

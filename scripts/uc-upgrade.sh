@@ -9,6 +9,10 @@
 # rewriting them would make the doc quote something ultima_cluster never
 # says. See docs/how-to/upgrade-uc.md.
 #
+# In the raw template repo (Cargo.toml still has liquid placeholders) the
+# `cargo update` step is skipped; the crates.io check still runs. A failure
+# at any step restores every file this run touched.
+#
 # UC_UPGRADE_SKIP_INDEX=1 skips the crates.io existence/yanked check AND the
 # `cargo update` step (both need the real registry, so a synthetic version
 # used only to prove this script moves every pin — as
@@ -79,41 +83,78 @@ else
   echo "uc-upgrade: UC_UPGRADE_SKIP_INDEX=1 — skipping the crates.io check and cargo update"
 fi
 
+# ---------------------------------------------------------------- plan
+# Everything is checked and computed BEFORE the first file changes, and every
+# file this run touches is saved first: a failure at any point (including
+# `cargo update`) restores them all, so a refused upgrade never leaves a
+# half-moved project behind.
+
 # sed pattern metacharacters in a version string are only ever literal dots.
 esc() { printf '%s' "$1" | sed 's/\./\\./g'; }
 OLD_RE="$(esc "$OLD")"
 
-echo "$NEW" > UC_VERSION
+# The raw template (this script run in the uc_starter repo itself, as the UC
+# release procedure does) has a liquid `name = "{{project-name}}"` that cargo
+# cannot parse, so it has no Cargo.lock to update: skip that step there.
+TEMPLATE=0; [ -f Cargo.toml ] && grep -q '{{' Cargo.toml && TEMPLATE=1
+UPDATE=0
+if [ "$SKIP" != 1 ] && [ -f Cargo.toml ] && [ $TEMPLATE = 0 ]; then
+  command -v cargo >/dev/null 2>&1 || die "cargo not found — Cargo.lock must move with the pins"
+  UPDATE=1
+fi
+[ $TEMPLATE = 1 ] && echo "uc-upgrade: raw template (Cargo.toml has liquid placeholders) — skipping cargo update"
+
+# Doc links: ANY file in the project (README, WHAT-NEXT.md, .claude/**, an
+# example TOML's comment, …) — excluding build/scratch trees a generated
+# project may already have, and the template's own template-tests/, whose
+# records quote what was true on the day they were written. `grep -I` skips
+# binaries by content, not by extension, so this is safe to run over the
+# whole tree rather than guessing every file type a link could live in.
+LINK_FILES=()
+while IFS= read -r -d '' f; do
+  grep -Iq "blob/v${OLD_RE}/\|releases/download/v${OLD_RE}" "$f" 2>/dev/null && LINK_FILES+=("$f")
+done < <(
+  find . \( -path './target' -o -path './.git' -o -path './.uc' -o -path './dist' -o -path './template-tests' \) -prune -o \
+       -type f -print0
+)
+TOUCH=(UC_VERSION ${LINK_FILES[@]+"${LINK_FILES[@]}"})
+[ -f Cargo.toml ] && TOUCH+=(Cargo.toml)
+[ -f Cargo.lock ] && TOUCH+=(Cargo.lock)
+
+mkdir -p "$PROJECT_DIR/.uc"; BK="$(mktemp -d "$PROJECT_DIR/.uc/uc-upgrade-backup.XXXXXX")" || die "cannot create a backup directory"
+for f in "${TOUCH[@]}"; do
+  if ! { mkdir -p "$BK/$(dirname "$f")" && cp -p "$f" "$BK/$f"; }; then rm -rf "$BK"; die "cannot back up $f — nothing was changed"; fi
+done
+LOCK_WAS=0; [ -f Cargo.lock ] && LOCK_WAS=1
+restore() {
+  local f
+  for f in "${TOUCH[@]}"; do cp -p "$BK/$f" "$f"; done
+  [ $LOCK_WAS = 1 ] || rm -f Cargo.lock
+  rm -rf "$BK"
+}
+fail_restore() { restore; die "$1 — every file was restored; nothing changed"; }
+
+# ---------------------------------------------------------------- apply
+echo "$NEW" > UC_VERSION || fail_restore "cannot write UC_VERSION"
 
 # The four exact pins: `"=<old>"` appears nowhere else in Cargo.toml (every
 # other dependency is a bare or caret version).
 if [ -f Cargo.toml ]; then
-  sed -i "s/\"=${OLD_RE}\"/\"=${NEW}\"/g" Cargo.toml
+  sed -i "s/\"=${OLD_RE}\"/\"=${NEW}\"/g" Cargo.toml || fail_restore "cannot rewrite Cargo.toml"
 fi
 
-# Doc links: ANY file in the project (README, WHAT-NEXT.md, .claude/**, an
-# example TOML's comment, …) — excluding build/scratch trees a generated
-# project may already have. `grep -I` skips binaries by content, not by
-# extension, so this is safe to run over the whole tree rather than guessing
-# every file type a link could live in.
-mapfile -t DOC_FILES < <(
-  find . \( -path './target' -o -path './.git' -o -path './.uc' -o -path './dist' \) -prune -o \
-       -type f -print
-)
-CHANGED=0
-for f in "${DOC_FILES[@]}"; do
-  if grep -Iq "blob/v${OLD_RE}/\|releases/download/v${OLD_RE}" "$f" 2>/dev/null; then
-    sed -i "s#blob/v${OLD_RE}/#blob/v${NEW}/#g; s#releases/download/v${OLD_RE}#releases/download/v${NEW}#g" "$f"
-    CHANGED=$((CHANGED + 1))
-  fi
+for f in ${LINK_FILES[@]+"${LINK_FILES[@]}"}; do
+  sed -i "s#blob/v${OLD_RE}/#blob/v${NEW}/#g; s#releases/download/v${OLD_RE}#releases/download/v${NEW}#g" "$f" \
+    || fail_restore "cannot rewrite links in $f"
 done
-echo "uc-upgrade: rewrote upstream links in $CHANGED file(s)"
+echo "uc-upgrade: rewrote upstream links in ${#LINK_FILES[@]} file(s)"
 
-if [ "$SKIP" != 1 ] && [ -f Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
+if [ $UPDATE = 1 ]; then
   echo "uc-upgrade: cargo update -p uc_service -p uc_remote -p uc_protocol -p uc_diffreplay"
   cargo update -p uc_service -p uc_remote -p uc_protocol -p uc_diffreplay 2>&1 \
-    || die "cargo update failed — Cargo.toml and UC_VERSION now name $NEW but Cargo.lock does not match; fix and re-run, or revert with git"
+    || fail_restore "cargo update failed"
 fi
+rm -rf "$BK"
 
 cat <<EOF
 
