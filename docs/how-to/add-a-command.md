@@ -118,12 +118,21 @@ replay, map the new tag in `upgrade/intent.toml` (`"02" = "put-if-absent"`).
 ## If a cluster has already run the old version
 
 Appending a variant is safe for the commands already in the log, but it is
-still a behaviour change: an old replica cannot decode the new command, and
+still a behaviour change: an old service cannot decode the new command, and
 old and new builds must never run side by side. On any cluster you care about
 (anything but your disposable local one), bump `FSM_VERSION` in
 `src/identity.rs` and roll it out as an upgrade: capture a corpus with
 `make corpus` *before* you change the code, then `make upgrade-check` and
 `make upgrade-drill`. `WHAT-NEXT.md` Step 12 is the full procedure.
+
+**The rollout order.** Never run a client that sends the new variant until
+**every** service runs the new build. On a real cluster, that means after the
+pin has committed and every service has restarted on the new version (Step 12).
+A new-variant command committed any earlier is decoded by every old service,
+which fail-stops with `corrupt committed frame (fail-stop)`, on every node and
+again on every restart. It also blocks the pinned upgrade itself: dead old
+services cannot complete the origin instant the pin needs. Ship the service
+first, the client last.
 
 Upstream: [the state-machine contract](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/state-machine-contract.md)
 and [the change taxonomy](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/application-sdlc.md#the-change-taxonomy).

@@ -326,7 +326,7 @@ and [the remote protocol](https://github.com/PeterKnego/ultima_cluster/blob/v2.1
 hashes `src/`, `Cargo.toml` and `Cargo.lock`, so a later code edit makes it stale.
 
 **Common mistakes.**
-- Forgetting `make restart-services` after a rebuild. The cluster keeps running the old service binary. The new client encodes commands the old service decodes differently, and fails with "client and service built from different code?".
+- Forgetting `make restart-services` after a rebuild. The cluster keeps running the old service binary. If only an answer changed shape, the new client fails with "client and service built from different code?". If the new client sends a command variant the old service does not know, it is worse: the command is committed, and every old service fail-stops on it with `corrupt committed frame (fail-stop)`. Restart the services with the new build, or on this disposable cluster `make up FRESH=1`.
 - Giving the client only the leader's gateway. Leadership moves. Give it all three and let redirects do their job.
 - Treating exit `1` like exit `2`. Retrying a bad argument never helps. Retrying a failed request (no leader yet, a timeout) might.
 

@@ -146,9 +146,13 @@ sudo systemctl daemon-reload
 
 ## 5. Start: nodes, then services, then gateways
 
+The units run as root, and the instance directory, the keys and the node's
+control page are root-only, so every `uc2ctl` command from here on runs under
+`sudo`.
+
 1. On all three hosts: `sudo systemctl enable --now uc2-node`
 2. Wait for a serving leader. On any host:
-   `uc2ctl status --instance-dir /srv/uc2/<APP_NAME> --app-id <APP_ID>`.
+   `sudo uc2ctl status --instance-dir /srv/uc2/<APP_NAME> --app-id <APP_ID>`.
    One node reports `leader=true can_serve=true`.
 3. On all three hosts: `sudo systemctl enable --now uc2-service@<APP_NAME>-service`
 4. On all three hosts: `sudo systemctl enable --now uc2-gateway`
@@ -159,7 +163,7 @@ above avoids that churn.
 
 ## 6. Check it
 
-- `uc2ctl status …` on each host: the same commit position, one leader, and
+- `sudo uc2ctl status …` on each host: the same commit position, one leader, and
   your row attached.
 - `curl -s http://ADDRi:<BASE_PORT+200+i>/readyz` answers 200 on every node.
 - From a client machine, give the client all three gateways:
@@ -180,15 +184,15 @@ Then, on your development machine: `make done STEP=deploy`.
 - **Snapshots.** The bundle's `node.toml` has no snapshot cadence unless
   `UC_SNAPSHOT_INTERVAL` was set when you ran `make package`. Take instants on
   demand, on the leader's host:
-  `uc2ctl snapshot --instance-dir /srv/uc2/<APP_NAME> --app-id <APP_ID> --admin-key /etc/uc2/admin/admin.key`.
+  `sudo uc2ctl snapshot --instance-dir /srv/uc2/<APP_NAME> --app-id <APP_ID> --admin-key /etc/uc2/admin/admin.key`.
   Purge only moves once an instant completes on every row.
-- **Backups.** `uc2ctl backup` works on a running node; copy the result off
+- **Backups.** `sudo uc2ctl backup` works on a running node; copy the result off
   the host. It is also the only rollback from a pinned upgrade.
 - **Monitoring.** Scrape each node's metrics port. The alert rules are in
   `.uc/packaging/prometheus/uc2-alerts.yml` on your development machine
   (`make bins` fetched them).
 - **Membership.** `[[members]]` is only read on a node's first boot. To add,
-  replace or remove a node later, use `uc2ctl` (and add a new node's public
+  replace or remove a node later, use `sudo uc2ctl` (and add a new node's public
   key to every allowlist first).
 - **Upgrades.** A new `FSM_VERSION` goes through the pinned upgrade
   (`WHAT-NEXT.md` Step 12, and UC's *Upgrade an application*). A new UC

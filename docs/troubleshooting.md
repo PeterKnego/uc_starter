@@ -186,10 +186,21 @@ restarted service replays it and fails the same way.
 **Fix.** Read the log, fix the code so the command is handled (answer bad
 input with an error response; never panic on it), `make check`, then
 `make restart-services`. If the log holds commands from an enum you replaced
-on your disposable local cluster, start over: `make up FRESH=1`. If a newer
-client got ahead of the services, `make restart-services` with the new build.
-On a cluster you care about, a code change here is an upgrade
-(`WHAT-NEXT.md` Step 12).
+on your disposable local cluster, start over: `make up FRESH=1`.
+
+**A newer client got ahead of the services** (it sent a new command variant):
+
+- *Prevention.* Never run a client that sends a new variant until every
+  service runs the new build; on a real cluster, after the pin has committed
+  ([Add a command](how-to/add-a-command.md), "The rollout order").
+- *Local cluster.* `make up FRESH=1`, or `make restart-services` with the new
+  build, which can decode the frame.
+- *Real cluster.* An ordinary restart with the new build is refused, because
+  it carries a different `FSM_VERSION` (see
+  [concepts § Identity](concepts.md#identity-name-and-version)). The recovery
+  is the pinned upgrade (`WHAT-NEXT.md` Step 12), if its origin instant can
+  still complete; if the dead services cannot complete it, restore the backup
+  taken before the change on every node.
 
 ## Client: "client and service built from different code"
 

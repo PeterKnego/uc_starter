@@ -49,9 +49,17 @@ published.
   bare command. Pick a random `client_id` per process and count `seq` up from
   there. A write's answer starts with a one-byte tag (`0` fresh, `1` replayed,
   `2` expired, with nothing after it) before your encoded `Response`. Queries
-  carry no envelope and no tag. Without the envelope the service misreads the
-  command, so there is no "sessions optional" here unless you also remove
-  `Sessioned` (see [Remove sessions or snapshots](remove-sessions-or-snapshots.md)).
+  carry no envelope and no tag. **Submitting without the envelope can
+  fail-stop every service in the cluster.** A bare command of 16 bytes or more
+  has its first 16 bytes read as `client_id ‖ seq` and the rest handed to the
+  typed decode, which then fails with `corrupt committed frame (fail-stop)`
+  (or, worse, decodes as some other command). The
+  frame is already committed, so every replica meets it and every service
+  stops, again on each restart. A bare command under 16 bytes is answered
+  `expired` and never applied. The typed `uc_client::Client::submit` sends
+  bare commands, so do not use it against this service. There is no "sessions
+  optional" here unless you also remove `Sessioned` (see
+  [Remove sessions or snapshots](remove-sessions-or-snapshots.md)).
 - **The same codec.** Encode commands and queries with `app::encode` and decode
   answers with `app::decode`, exactly as the remote client does.
 
