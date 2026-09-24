@@ -1,0 +1,26 @@
+# What your change is SUPPOSED to change. uc2-diffreplay fails the run on any
+# difference not declared here, and on any declaration it did not observe.
+# Reference: https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/diff-replay.md#3-declare-what-you-intend
+tag_offset = 16   # skip the Sessioned envelope (client_id ‖ seq)
+
+[tags]            # first byte of the bincode encoding = the enum variant index
+"00" = "put"      # Command::Put    (checked: app::encode(&Command::Put{..})[0] == 0x00)
+"01" = "delete"   # Command::Delete (0x01). A new variant appended at the end is "02".
+
+[touched]
+arms = []         # the arms whose behaviour you changed, e.g. ["put"]
+migration = false # true when the snapshot image format changes (IMAGE_VERSION)
+
+# One [[expect]] per (surface, arm) you meant to change. surface is one of
+# response, sched, ids, output (these take an arm), projection_origin,
+# projection_end (these take NO arm). Put the detail in `note`: a second entry
+# on the same pair that never fires comes back Absent and fails the run.
+#
+# [[expect]]
+# surface = "response"
+# arm = "put"
+# note = "put now trims the value, so a later put's `previous` differs"
+#
+# [[expect]]
+# surface = "projection_end"
+# note = "stored values are trimmed"

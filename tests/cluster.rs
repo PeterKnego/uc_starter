@@ -41,3 +41,11 @@ fn demo_survives_a_leader_kill() {
     sh(&["scripts/kill-leader.sh"]);
     sh(&["scripts/demo.sh"]);
 }
+
+#[test]
+fn snapshot_drill_and_observe() {
+    let _down = Down;
+    sh(&["scripts/cluster.sh", "up", "--fresh"]);
+    sh(&["scripts/snapshot-drill.sh"]);
+    sh(&["scripts/observe.sh"]);
+}

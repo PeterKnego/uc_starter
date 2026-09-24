@@ -35,6 +35,7 @@ tree_hash() { # paths… → 16 hex chars over file names + contents
   done | LC_ALL=C sort -z | xargs -0 sha256sum 2>/dev/null | sha256sum | cut -c1-16
 }
 code_hash()            { tree_hash src Cargo.toml Cargo.lock; }
+upgrade_hash()         { tree_hash src Cargo.toml Cargo.lock upgrade/intent.toml; }
 code_hash_with_tests() { tree_hash src tests Cargo.toml Cargo.lock; }
 STATE_DIR="$PROJECT_DIR/.uc/state"
 write_stamp() { [ "${UC_NO_STAMP:-0}" = 1 ] && return 0; mkdir -p "$STATE_DIR"; echo "$2" >"$STATE_DIR/$1.ok"; }
@@ -152,3 +153,8 @@ request_timeout_ms = 2000
 envelope = true
 EOT
 }
+
+# The FSM version in the source (src/identity.rs) and the one row 0 is
+# attached at on node N (`uc2ctl status`'s row line: `row=0 name=… version=1.0.0 …`).
+source_version() { sed -nE 's/.*pack_version\(([0-9]+), *([0-9]+), *([0-9]+)\).*/\1.\2.\3/p' src/identity.rs | head -1; }
+running_version() { "$PROJECT_DIR/scripts/cluster.sh" ctl "$1" status 2>/dev/null | sed -nE 's/^ *row=0 .* version=([0-9]+\.[0-9]+\.[0-9]+) .*/\1/p' | head -1; }
