@@ -44,7 +44,7 @@ up:
 |---|---|
 | `next` | the tutor protocol: run `scripts/next.sh --json`, teach the step, ask "do it yourself, or shall I?", run the step's check |
 | `add-command` | adding or changing a command or query: the six edits of [Add a command](how-to/add-a-command.md), then the reviewer, then `make check restart-services demo` |
-| `determinism-review` | the checklist: clocks, RNG, hash iteration, floats, overflow, panics in `apply`, changed `ids()` call counts, enum and field order, serde defaults for image compatibility |
+| `determinism-review` | the checklist: clocks, RNG, hash iteration, floats, overflow, panics in `apply`, changed `ids()` call counts, enum and field order, image compatibility (a new `IMAGE_VERSION` with an old-image reader: `#[serde(default)]` does not let bincode read an old image) |
 | `upgrade-fsm` | the diff-replay judgement: draft the intent declaration, classify the change, attribute the report's residue to a hunk, judge the state at the origin, spot what a lint cannot. Ends by asking before `make upgrade-drill` |
 | `troubleshoot-cluster` | run `make status`, read the process logs, match the named refusal against [troubleshooting](troubleshooting.md), quote the fix; never delete cluster state without asking |
 
@@ -61,10 +61,12 @@ instead of surfacing later in `make lint`.
 
 **Permissions** (`.claude/settings.json`): routine work runs without prompts
 (`make` targets, `cargo build/check/test/clippy/fmt`, `scripts/next.sh`,
-`scripts/lint-determinism.sh`, cluster status and leader). Anything that can
-pin an upgrade **always asks you**: `make upgrade-drill`,
-`scripts/upgrade-drill.sh`, any direct `.uc/bin/uc2ctl` call, and any command
-carrying `UC_CONFIRM_PIN=yes`. The scripts guard the pin as well: `make
+`scripts/lint-determinism.sh`, cluster status, leader and root, and
+`git status/diff/log`). Anything that can pin an upgrade **always asks you**:
+`make upgrade-drill`, `scripts/upgrade-drill.sh`, any direct `.uc/bin/uc2ctl`
+call, any command carrying `UC_CONFIRM_PIN=yes`, and any command containing
+`upgrade pin`. Claude Code checks `ask` rules before `allow` rules, so the
+blanket `make` allowance does not cover `make upgrade-drill`. The scripts guard the pin as well: `make
 upgrade-drill` asks you to type `PIN`, and `scripts/cluster.sh ctl … upgrade
 pin` refuses without `UC_CONFIRM_PIN=yes`. A pin is a one-way door: there is
 no unpin, and the only rollback is the backup taken before it.

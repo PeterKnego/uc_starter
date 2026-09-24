@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make:*)",
+      "Bash(cargo build:*)",
+      "Bash(cargo check:*)",
+      "Bash(cargo test:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(scripts/next.sh:*)",
+      "Bash(scripts/lint-determinism.sh:*)",
+      "Bash(scripts/cluster.sh status:*)",
+      "Bash(scripts/cluster.sh leader:*)",
+      "Bash(scripts/cluster.sh root:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)"
+    ],
+    "ask": [
+      "Bash(make upgrade-drill:*)",
+      "Bash(scripts/upgrade-drill.sh:*)",
+      "Bash(.uc/bin/uc2ctl:*)",
+      "Bash(UC_CONFIRM_PIN=yes:*)",
+      "Bash(*UC_CONFIRM_PIN=yes*)",
+      "Bash(*upgrade pin*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-edit.sh",
+            "continueOnBlock": true
+          }
+        ]
+      }
+    ]
+  }
+}
