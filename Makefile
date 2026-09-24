@@ -48,7 +48,7 @@ skip: ## deliberately skip a step: make skip STEP=snapshots
 	@scripts/progress.sh skip $(STEP)
 diffreplay: ## install uc2-diffreplay for UC_VERSION into .uc/cargo
 	cargo install uc_diffreplay --version $(UC_VERSION) --locked --root .uc/cargo
-corpus: build ## capture a diff-replay corpus + keep the old binary (before changing code)
+corpus: ## capture a diff-replay corpus + keep the old binary (before changing code)
 	scripts/corpus.sh
 upgrade-check: ## diff-replay the corpus through old vs new builds
 	scripts/upgrade-check.sh
@@ -57,6 +57,6 @@ snapshot-drill: ## snapshot, kill a service, watch it rebuild
 observe: ## health, readiness and key metrics on every node
 	scripts/observe.sh
 upgrade-drill: ## the pinned upgrade on the local cluster (asks first: one-way door)
-	scripts/upgrade-drill.sh
+	scripts/upgrade-drill.sh $(if $(RESUME),--resume)
 package: ## deploy bundle: make package HOSTS=ip0,ip1,ip2
 	HOSTS=$(HOSTS) scripts/package.sh

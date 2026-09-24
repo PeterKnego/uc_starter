@@ -460,3 +460,198 @@ scripts/cluster.sh down
    stopped node2 (pid 733811, SIGTERM)
 [exit 0]
 ```
+
+## Fix round 1 — post-pin re-run refusal, `--resume`, corpus keeps the running build
+
+A fresh project (`~/scratch/uc_starter-gen/t8e`, `UC_ROOT=~/scratch/t8e-root`), in this order:
+
+- **F2.** The code is edited *without* a version bump and rebuilt, so the service on disk is no longer the one the cluster runs. `make corpus` still saves the RUNNING binary: it is `cmp`-identical to `/proc/<pid>/exe` and differs from the edited build. `upgrade-check` then catches the edit: FAIL with the template's intent, PASS once it is declared. `make corpus` also refuses with no service running.
+- **F1, case 1 (services still running).** `--resume` with nothing in flight is refused. A pin is placed by hand after a hand backup, and the services are left running. `make upgrade-drill` refuses and takes no new backup (`backups/` still holds only the hand copies). `make upgrade-drill RESUME=1` completes, and a second full run is refused because 1.1.0 is already running.
+- **F1, case 2 (services stopped).** A 1.1.0 → 1.2.0 pin is placed by hand, and every service is stopped (the "died between steps 5 and 6" state). The drill refuses, and `--resume` completes.
+- Finally, `make down`.
+
+```text
+
+$ make up
+cargo build --release
+    Updating crates.io index
+     Locking 112 packages to latest Rust 1.89 compatible versions
+      Adding bincode v2.0.1 (available: v3.0.0)
+      Adding generic-array v0.14.7 (available: v0.14.9)
+      Adding signal-hook v0.3.18 (available: v0.4.4)
+   Compiling p2-app v0.1.0 (/home/claude/scratch/uc_starter-gen/t8e/p2-app)
+    Finished `release` profile [optimized] target(s) in 2.89s
+scripts/cluster.sh up 
+p2-app cluster: root=/home/claude/scratch/t8e-root
+1. nodes
+   started node0 (pid 760214)
+   started node1 (pid 760218)
+   started node2 (pid 760223)
+   waiting for a serving leader
+   node 0 is the serving leader
+2. services
+   started service0 (pid 760288)
+   started service1 (pid 760294)
+   started service2 (pid 760300)
+3. gateways
+   started gateway0 (pid 760306)
+   started gateway1 (pid 760312)
+   started gateway2 (pid 760318)
+   gateways: 127.0.0.1:7900,127.0.0.1:7901,127.0.0.1:7902
+up. try: make demo
+[exit 0]
+
+$ sed -i 's/previous: self.state.entries.insert(key, value),/previous: self.state.entries.insert(key, value.trim().to_string()),/' src/state.rs && git diff --stat && cargo build --release -q && S=$(cargo metadata --format-version=1 --no-deps | sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')/release/p2-app-service && readlink /proc/$(cat $UC_ROOT/pids/service0.pid)/exe && sha256sum $S /proc/$(cat $UC_ROOT/pids/service0.pid)/exe | cut -c1-16
+ src/state.rs | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+/home/claude/.cache/cargo-target/release/p2-app-service (deleted)
+c6289e053bf206a8
+1123db4f6d1cdb2f
+[exit 0]
+
+$ make corpus
+scripts/corpus.sh
+1. instant P=448, complete on node 0
+2. ran scripts/demo.sh above P; node 0 durable to 832
+corpus at upgrade/corpus — row 0 origin 448 end 18446744073709551615
+3. corpus at upgrade/corpus (from P=448); old service binary (the one service 0 runs, pid 760288) at upgrade/old/
+next: change the code, bump FSM_VERSION in src/identity.rs, declare the change in upgrade/intent.toml, run make upgrade-check
+[exit 0]
+
+$ S=$(cargo metadata --format-version=1 --no-deps | sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')/release/p2-app-service; cmp upgrade/old/p2-app-service /proc/$(cat $UC_ROOT/pids/service0.pid)/exe && echo 'old == running service: identical'; cmp -s upgrade/old/p2-app-service $S || echo 'old != edited build: differs (as it must)'
+old == running service: identical
+old != edited build: differs (as it must)
+[exit 0]
+
+$ sed -i 's/pack_version(1, 0, 0)/pack_version(1, 1, 0)/' src/identity.rs && make upgrade-check 2>&1 | tail -4
+  Unexplained response           arm=-          pos=768      no touched arm explains this
+  0 pass, 0 undeclared, 1 unexplained, 0 absent → FAIL
+FAIL — read upgrade/report.json (Undeclared / Unexplained / Absent); the upgrade-fsm skill explains each
+make: *** [Makefile:54: upgrade-check] Error 1
+[exit 0]
+
+$ printf 'tag_offset = 16\n\n[tags]\n"00" = "put"\n"01" = "delete"\n\n[touched]\narms = ["put"]\nmigration = false\n\n[[expect]]\nsurface = "response"\narm = "put"\nnote = "put trims the value"\n' > upgrade/intent.toml && make upgrade-check 2>&1 | tail -4
+  divergences: 1 entries, 0 only in a, 0 only in b, origin projection 0−/0+, end projection 0−/0+
+  Pass        response           arm=put        pos=768      put trims the value
+  1 pass, 0 undeclared, 0 unexplained, 0 absent → PASS
+PASS — every difference is declared and attributed
+[exit 0]
+
+$ make upgrade-drill RESUME=1; echo exit=$?
+scripts/upgrade-drill.sh --resume
+upgrade-drill.sh: --resume: no node's row 0 is pinned to a version it is not running — there is no upgrade in flight to resume (run make upgrade-drill)
+make: *** [Makefile:60: upgrade-drill] Error 3
+exit=2
+[exit 0]
+
+$ T=$(cargo metadata --format-version=1 --no-deps | sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')/release; $T/p2-app put upgrade-canary before && P=$(scripts/cluster.sh snapshot | sed -n 's/^instant=//p') && echo P=$P && sleep 1 && for n in 0 1 2; do scripts/cluster.sh snapshot-show $n | grep '^set='; done && mkdir -p $UC_ROOT/backups && for n in 0 1 2; do .uc/bin/uc2ctl backup --instance-dir $UC_ROOT/n$n --out $UC_ROOT/backups/hand-n$n >/dev/null; done && ls $UC_ROOT/backups && UC_CONFIRM_PIN=yes scripts/cluster.sh ctl $(scripts/cluster.sh leader) upgrade pin --row 0 --to 1.1.0 --origin $P --admin-key $UC_ROOT/admin.key && sleep 1 && scripts/cluster.sh status | grep -o 'row=0 .* version=[^ ]*\|upgrade_origin=[^ ]* pinned=[^ ]*'
+ok previous=none position=832 replayed=false
+P=960
+set=960
+set=960
+set=960
+hand-n0
+hand-n1
+hand-n2
+pinned: row=0 from=1.0.0 to=1.1.0 origin=960 position=1120
+row=0 name=p2 version=1.0.0
+upgrade_origin=960 pinned=1.1.0
+row=0 name=p2 version=1.0.0
+upgrade_origin=960 pinned=1.1.0
+row=0 name=p2 version=1.0.0
+upgrade_origin=960 pinned=1.1.0
+[exit 0]
+
+$ UC_CONFIRM_PIN=yes make upgrade-drill; echo exit=$?; ls $UC_ROOT/backups
+scripts/upgrade-drill.sh 
+upgrade-drill.sh: an upgrade of row 0 to 1.1.0 is already in flight (pinned at origin 960, not yet running everywhere). Do NOT start over: new backups would carry the pin and could not take you back. Finish it with: make upgrade-drill RESUME=1 (scripts/upgrade-drill.sh --resume)
+make: *** [Makefile:60: upgrade-drill] Error 3
+exit=2
+hand-n0
+hand-n1
+hand-n2
+[exit 0]
+
+$ make upgrade-drill RESUME=1; echo exit=$?
+scripts/upgrade-drill.sh --resume
+resuming the upgrade of row 0 (p2) to 1.1.0, pinned at origin P=960 (no new backups: your rollback point is the one taken before the pin)
+5. stopped every service (all of them, before starting any)
+6. started the new build everywhere
+7. every node runs 1.1.0, installed snap-960, and the pre-upgrade write reads back (value="before")
+   log: uc_service: row 0 pinned install of snap-960 (from 0x01000000 to 0x01010000, artifact built by 0x01000000)
+   log: uc_service: row 0 pinned install of snap-960 (from 0x01000000 to 0x01010000, artifact built by 0x01000000)
+   log: uc_service: row 0 pinned install of snap-960 (from 0x01000000 to 0x01010000, artifact built by 0x01000000)
+PASS
+exit=0
+[exit 0]
+
+$ scripts/cluster.sh status | grep -o 'row=0 .* version=[^ ]* .*attached=[^ ]*\|upgrade_origin=[^ ]* pinned=[^ ]*'; ls $UC_ROOT/backups; UC_CONFIRM_PIN=yes make upgrade-drill; echo exit=$?
+row=0 name=p2 version=1.1.0 hash=0x08d59607b575e907 attached=true
+upgrade_origin=960 pinned=1.1.0
+row=0 name=p2 version=1.1.0 hash=0x08d59607b575e907 attached=true
+upgrade_origin=960 pinned=1.1.0
+row=0 name=p2 version=1.1.0 hash=0x08d59607b575e907 attached=true
+upgrade_origin=960 pinned=1.1.0
+hand-n0
+hand-n1
+hand-n2
+scripts/upgrade-drill.sh 
+upgrade-drill.sh: running version is already 1.1.0 — bump FSM_VERSION in src/identity.rs first
+make: *** [Makefile:60: upgrade-drill] Error 3
+exit=2
+[exit 0]
+
+$ make corpus 2>&1 | tail -2 && sed -i 's/pack_version(1, 1, 0)/pack_version(1, 2, 0)/' src/identity.rs && cp upgrade/intent.toml.example upgrade/intent.toml && make upgrade-check 2>&1 | tail -2
+3. corpus at upgrade/corpus (from P=1440); old service binary (the one service 0 runs, pid 761992) at upgrade/old/
+next: change the code, bump FSM_VERSION in src/identity.rs, declare the change in upgrade/intent.toml, run make upgrade-check
+  0 pass, 0 undeclared, 0 unexplained, 0 absent → PASS
+PASS — every difference is declared and attributed
+[exit 0]
+
+$ P=$(scripts/cluster.sh snapshot | sed -n 's/^instant=//p') && echo P=$P && sleep 1 && UC_CONFIRM_PIN=yes scripts/cluster.sh ctl $(scripts/cluster.sh leader) upgrade pin --row 0 --to 1.2.0 --origin $P --admin-key $UC_ROOT/admin.key && sleep 1 && for n in 0 1 2; do scripts/cluster.sh stop service $n; done; sleep 1; scripts/cluster.sh status | grep -o 'row=0 .* version=[^ ]* .*attached=[^ ]*\|upgrade_origin=[^ ]* pinned=[^ ]*'
+P=1856
+pinned: row=0 from=1.1.0 to=1.2.0 origin=1856 position=2016
+   stopped service0 (pid 761992, SIGTERM)
+   stopped service1 (pid 762015, SIGTERM)
+   stopped service2 (pid 762038, SIGTERM)
+row=0 name=p2 version=1.1.0 hash=0x08d59607b575e907 attached=false
+upgrade_origin=1856 pinned=1.2.0
+row=0 name=p2 version=1.1.0 hash=0x08d59607b575e907 attached=false
+upgrade_origin=1856 pinned=1.2.0
+row=0 name=p2 version=1.1.0 hash=0x08d59607b575e907 attached=false
+upgrade_origin=1856 pinned=1.2.0
+[exit 0]
+
+$ UC_CONFIRM_PIN=yes scripts/upgrade-drill.sh; echo exit=$?
+upgrade-drill.sh: an upgrade of row 0 to 1.2.0 is already in flight (pinned at origin 1856, not yet running everywhere). Do NOT start over: new backups would carry the pin and could not take you back. Finish it with: make upgrade-drill RESUME=1 (scripts/upgrade-drill.sh --resume)
+exit=3
+[exit 0]
+
+$ scripts/upgrade-drill.sh --resume; echo exit=$?
+resuming the upgrade of row 0 (p2) to 1.2.0, pinned at origin P=1856 (no new backups: your rollback point is the one taken before the pin)
+5. stopped every service (all of them, before starting any)
+6. started the new build everywhere
+7. every node runs 1.2.0, installed snap-1856, and the pre-upgrade write reads back (value="before")
+   log: uc_service: row 0 pinned install of snap-1856 (from 0x01010000 to 0x01020000, artifact built by 0x01010000)
+   log: uc_service: row 0 pinned install of snap-1856 (from 0x01010000 to 0x01020000, artifact built by 0x01010000)
+   log: uc_service: row 0 pinned install of snap-1856 (from 0x01010000 to 0x01020000, artifact built by 0x01010000)
+PASS
+exit=0
+[exit 0]
+
+$ scripts/cluster.sh stop service 0 >/dev/null; make corpus; echo exit=$?; scripts/cluster.sh start service 0
+scripts/corpus.sh
+corpus.sh: service 0 is not running — the old binary is taken from the running service (make up)
+make: *** [Makefile:52: corpus] Error 3
+exit=2
+   started service0 (pid 763691)
+[exit 0]
+
+$ grep -n 'pin failed or timed out' scripts/upgrade-drill.sh
+122:  || die "pin failed or timed out: $out — check 'scripts/cluster.sh status | grep pinned=' before re-running (a pin that committed is resumed with make upgrade-drill RESUME=1, never re-run from the start)"
+[exit 0]
+
+$ make down | tail -1
+   stopped node2 (pid 760223, SIGTERM)
+[exit 0]
+```
