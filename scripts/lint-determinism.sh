@@ -3,7 +3,7 @@
 # files. Fast enough for an editor hook; `make lint` also runs clippy with
 # clippy.toml's bans. Exempt one line with a `determinism: ok <why>` comment.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 3
 is_fsm() { case "$1" in src/commands.rs|src/state.rs|src/snapshot.rs|src/fsm/*) return 0 ;; *) return 1 ;; esac; }
 HAZARDS=(
   'SystemTime::now|wall clock — use ctx.time_ns'

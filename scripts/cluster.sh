@@ -37,7 +37,6 @@ APP="$APP_ID"
 SERVICE_BIN="$(app_bin_dir)/$APP_NAME-service"
 LOGS="$ROOT/logs"
 PIDS="$ROOT/pids"
-SNAPSHOT_INTERVAL="${UC_SNAPSHOT_INTERVAL:-0}"
 
 say() { printf '%s\n' "$*"; }
 tcp_open() { (exec 3<>"/dev/tcp/$1/$2") 2>/dev/null; }
@@ -130,75 +129,10 @@ write_config() {
     if [ ! -f "$ROOT/admin.key" ]; then
         "$UC_BIN/uc2ctl" gen-admin-key "$ROOT/admin.key" >"$LOGS/gen-admin-key.log" 2>&1 || die "gen-admin-key failed: see $LOGS/gen-admin-key.log"
     fi
-    local members="" gw_members="" i
+    local i
     for i in 0 1 2; do
-        members+="[[members]]
-id = $i
-addr = \"127.0.0.1:$(NODE_PORT "$i")\"
-
-"
-        gw_members+="[[members]]
-node_id = $i
-gateway = \"127.0.0.1:$(GW_PORT "$i")\"
-
-"
-    done
-    for i in 0 1 2; do
-        cat >"$ROOT/n$i/node.toml" <<EOT
-id = $i
-bind = "127.0.0.1:$(NODE_PORT "$i")"
-instance_dir = "$ROOT/n$i"
-app_id = "$APP_ID"
-
-# Small geometry so journal purge is observable on a laptop-sized write
-# volume: purge drops whole non-active segments, so with 4 MiB segments a few
-# MiB of writes after a snapshot is enough to see archive_first_base move.
-# (Top-level keys MUST precede [[members]]: after it they parse as a member's.)
-buffer_bytes = 16777216
-journal_segment_bytes = 4194304
-
-$members# The state machine implements SnapshotStateMachine and the service starts
-# with start_with_snapshots(); this is the other half of bounding the log.
-[purge]
-below_snapshot_slack_bytes = 1048576
-
-[services]
-names = ["$FSM_NAME"]
-
-# Genesis seed only. snapshot_interval_bytes = 0 means instants are
-# operator-commanded (uc2ctl snapshot); set UC_SNAPSHOT_INTERVAL for a cadence.
-[settings]
-snapshot_interval_bytes = $SNAPSHOT_INTERVAL
-snapshot_target = "all"
-
-[log]
-level = "info"
-
-[metrics]
-bind = "127.0.0.1:$(METRICS_PORT "$i")"
-
-[crypto]
-enabled = false
-
-[admin]
-auth = "hmac"
-keys = [{ name = "admin", key_path = "$ROOT/admin.key" }]
-EOT
-        cat >"$ROOT/gw$i.toml" <<EOT
-[local]
-instance_dir = "$ROOT/n$i"
-app_id = "$APP_ID"
-listen = "127.0.0.1:$(GW_PORT "$i")"
-
-${gw_members}[limits]
-# The client's exposure window to a node that died under this gateway.
-request_timeout_ms = 2000
-
-# The service runs Sessioned<Fsm>: the envelope is what makes a re-sent write
-# answer "replayed" instead of applying twice.
-[session]
-envelope = true
-EOT
+        render_node_toml local "$i" "$ROOT/n$i" "$ROOT/admin.key" 127.0.0.1 127.0.0.1 127.0.0.1 >"$ROOT/n$i/node.toml"
+        render_gateway_toml "$i" "$ROOT/n$i" 127.0.0.1 127.0.0.1 127.0.0.1 >"$ROOT/gw$i.toml"
     done
 }
 

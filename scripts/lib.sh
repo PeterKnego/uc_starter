@@ -47,3 +47,108 @@ stamp_state() { # id hash → missing|stale|fresh ; hash "any" accepts any conte
 PROGRESS="$PROJECT_DIR/.uc-progress"
 progress_has() { [ -f "$PROGRESS" ] && grep -qE "^(done|skip) $1( |$)" "$PROGRESS"; }
 progress_skipped() { [ -f "$PROGRESS" ] && grep -qE "^skip $1( |$)" "$PROGRESS"; }
+
+# ---------------------------------------------------------------- config shape
+# One source of truth for node.toml and gateway.toml: scripts/cluster.sh
+# renders the local cluster from these, scripts/package.sh the deploy bundle.
+#
+#   render_node_toml PROFILE ID INSTANCE_DIR ADMIN_KEY HOST0 HOST1 HOST2
+#   render_gateway_toml ID INSTANCE_DIR HOST0 HOST1 HOST2
+#
+# PROFILE is `local` (one host, small journal geometry so purge is visible,
+# crypto off) or `deploy` (one node per host, default geometry, crypto ON with
+# the key paths docs/how-to/deploy.md sets up). Node ID binds, serves metrics
+# and listens (gateway) on HOST<ID>; every [[members]] list names all three.
+# Ports come from NODE_PORT / GW_PORT / METRICS_PORT above. Reads APP_ID,
+# FSM_NAME and UC_SNAPSHOT_INTERVAL (genesis snapshot_interval_bytes, default 0).
+render_node_toml() {
+  local profile="$1" id="$2" dir="$3" admin_key="$4"; shift 4
+  local hosts=("$@") i geometry crypto
+  [ "${#hosts[@]}" = 3 ] || die "render_node_toml: need three hosts"
+  case "$profile" in
+    local)
+      geometry='
+# Small geometry so journal purge is observable on a laptop-sized write
+# volume: purge drops whole non-active segments, so with 4 MiB segments a few
+# MiB of writes after a snapshot is enough to see archive_first_base move.
+# (Top-level keys MUST precede [[members]]: after it they parse as a member'"'"'s.)
+buffer_bytes = 16777216
+journal_segment_bytes = 4194304
+'
+      crypto='enabled = false' ;;
+    deploy)
+      geometry=''
+      # Crypto is ON: node traffic crosses a network this file cannot vouch
+      # for. The node refuses to start until both files exist, mode 0600 —
+      # docs/how-to/deploy.md says how to make them.
+      crypto='enabled = true
+key_path = "/etc/uc2/node.key"
+allowlist_path = "/etc/uc2/allowlist.toml"' ;;
+    *) die "render_node_toml: profile must be local or deploy" ;;
+  esac
+  cat <<EOT
+id = $id
+bind = "${hosts[$id]}:$(NODE_PORT "$id")"
+instance_dir = "$dir"
+app_id = "$APP_ID"
+$geometry
+EOT
+  for i in 0 1 2; do
+    printf '[[members]]\nid = %s\naddr = "%s:%s"\n\n' "$i" "${hosts[$i]}" "$(NODE_PORT "$i")"
+  done
+  cat <<EOT
+# The state machine implements SnapshotStateMachine and the service starts
+# with start_with_snapshots(); this is the other half of bounding the log.
+[purge]
+below_snapshot_slack_bytes = 1048576
+
+[services]
+names = ["$FSM_NAME"]
+
+# Genesis seed only. snapshot_interval_bytes = 0 means instants are
+# operator-commanded (uc2ctl snapshot); set UC_SNAPSHOT_INTERVAL for a cadence.
+[settings]
+snapshot_interval_bytes = ${UC_SNAPSHOT_INTERVAL:-0}
+snapshot_target = "all"
+
+[log]
+level = "info"
+
+# Unauthenticated: keep it on loopback or a private address.
+[metrics]
+bind = "${hosts[$id]}:$(METRICS_PORT "$id")"
+
+[crypto]
+$crypto
+
+[admin]
+auth = "hmac"
+keys = [{ name = "$(basename "$admin_key" .key)", key_path = "$admin_key" }]
+EOT
+}
+
+render_gateway_toml() {
+  local id="$1" dir="$2"; shift 2
+  local hosts=("$@") i
+  [ "${#hosts[@]}" = 3 ] || die "render_gateway_toml: need three hosts"
+  cat <<EOT
+[local]
+instance_dir = "$dir"
+app_id = "$APP_ID"
+listen = "${hosts[$id]}:$(GW_PORT "$id")"
+
+EOT
+  for i in 0 1 2; do
+    printf '[[members]]\nnode_id = %s\ngateway = "%s:%s"\n\n' "$i" "${hosts[$i]}" "$(GW_PORT "$i")"
+  done
+  cat <<'EOT'
+[limits]
+# The client's exposure window to a node that died under this gateway.
+request_timeout_ms = 2000
+
+# The service runs Sessioned<Fsm>: the envelope is what makes a re-sent write
+# answer "replayed" instead of applying twice.
+[session]
+envelope = true
+EOT
+}
