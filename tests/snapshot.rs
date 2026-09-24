@@ -1,3 +1,4 @@
+// TODO(app): rewrite `filled()` and these tests for your state — the image round-trips and the projection is stable (WHAT-NEXT.md, Step 7).
 use app::{Command, Fsm};
 use uc_service::{ApplyCtx, SnapshotStateMachine, StateMachine};
 

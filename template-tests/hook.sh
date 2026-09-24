@@ -29,10 +29,11 @@ assert cmd.get("continueOnBlock") is True, "exit 2 must feed back to the agent"
 # The pin prompt: text-anywhere ask rules, so `make -s upgrade-drill` or a
 # quoted UC_CONFIRM_PIN='yes' cannot fall through to the `make` allow rule.
 ask = s["permissions"]["ask"]
-for r in ("Bash(*upgrade-drill*)", "Bash(*UC_CONFIRM_PIN*)", "Bash(*upgrade pin*)", "Bash(.uc/bin/uc2ctl:*)"):
+# FRESH=1 wipes the local cluster's log (M19): ask first there too.
+for r in ("Bash(*upgrade-drill*)", "Bash(*UC_CONFIRM_PIN*)", "Bash(*upgrade pin*)", "Bash(*FRESH=1*)", "Bash(.uc/bin/uc2ctl:*)"):
     assert r in ask, "missing ask rule " + r
 for r in s["permissions"]["allow"]:
-    assert not any(w in r for w in ("upgrade-drill", "UC_CONFIRM_PIN", "upgrade pin", "uc2ctl")), "allow rule names a pin path: " + r
+    assert not any(w in r for w in ("upgrade-drill", "UC_CONFIRM_PIN", "upgrade pin", "uc2ctl", "FRESH")), "allow rule names a pin or wipe path: " + r
 EOF
 for f in AGENTS.md CLAUDE.md .claude/agents/determinism-reviewer.md \
          .claude/skills/{next,add-command,determinism-review,upgrade-fsm,troubleshoot-cluster}/SKILL.md; do

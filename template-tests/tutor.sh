@@ -33,7 +33,10 @@ scripts/stamp.sh skeleton;                      expect "concepts todo"
 scripts/progress.sh done concepts;              expect "design todo"
 unmark docs/app-design.md;                      expect "commands todo"
 unmark src/commands.rs;                         expect "state todo"
-unmark src/state.rs src/snapshot.rs;            expect "tests todo"
+mv docs/app-design.md "$BASE/app-design.md.away"; expect "design todo"  # M12: a missing note is not a finished one
+mv "$BASE/app-design.md.away" docs/app-design.md; expect "state todo"
+unmark src/state.rs src/snapshot.rs;            expect "state todo"   # I3: tests/state.rs is Step 6's proof
+unmark tests/state.rs;                          expect "tests todo"
 unmark tests/*.rs;                              expect "tests todo"   # no check stamp yet
 scripts/stamp.sh check;                         expect "client todo"
 # src/bin/client.rs is part of `src`, so this edit is covered by the "tests"
@@ -41,9 +44,11 @@ scripts/stamp.sh check;                         expect "client todo"
 # whole-src staleness behaviour rather than stepping around it: the very next
 # poll reports "tests" stale again, even though client/demo.sh are done.
 unmark src/bin/client.rs scripts/demo.sh;       expect "tests stale"
+scripts/stamp.sh check >/dev/null;             expect "client todo"  # C1: scripts/probe.sh is Step 8's too
+unmark scripts/probe.sh
 # a real developer re-runs `make check` after any src/ edit, so the drill
 # does too, before moving on to the client's own demo stamp.
-scripts/stamp.sh check
+scripts/stamp.sh check >/dev/null
 scripts/stamp.sh demo;                          expect "failover todo"
 # 9. an edit after the stamp is STALE, not done
 echo "// touched" >> src/state.rs;              expect "tests stale"
@@ -97,4 +102,9 @@ if scripts/progress.sh done nonsense 2>/dev/null; then fail "unknown id accepted
 # part1 is a machine-local stamp, not a step a person records (R6)
 # shellcheck disable=SC1010  # "done" is the verb argument to progress.sh, not the loop keyword
 if scripts/progress.sh done part1 2>/dev/null; then fail "'part1' accepted as a step id"; fi
+# M6: `done` only for the steps the repo cannot show (concepts, deploy)
+# shellcheck disable=SC1010  # "done" is the verb argument to progress.sh, not the loop keyword
+if scripts/progress.sh done observe 2>/dev/null; then fail "'make done STEP=observe' accepted — only concepts and deploy may be recorded by hand"; fi
+# shellcheck disable=SC1010  # "done" is the verb argument to progress.sh, not the loop keyword
+scripts/progress.sh done deploy >/dev/null || fail "'make done STEP=deploy' refused"
 echo "tutor: PASS"

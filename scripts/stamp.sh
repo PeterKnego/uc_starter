@@ -8,3 +8,8 @@ case "$1" in
   skeleton|snapshots|observe|upgrade-check|upgrade-drill) write_stamp "$1" any ;;
   *) write_stamp "$1" "$(code_hash)" ;;
 esac
+if [ "${UC_NO_STAMP:-0}" = 1 ]; then
+  echo "$1: PASS (not recorded: UC_NO_STAMP=1)"
+else
+  echo "$1: PASS (recorded for make next)"
+fi

@@ -28,8 +28,10 @@ similar:
    done and offer the next one.
 
 Step 3 (`concepts`): ask the three check questions from `WHAT-NEXT.md`
-Step 3, one at a time, and discuss each answer. Run
-`make done STEP=concepts` only after the developer has answered all three.
+Step 3, one at a time, and discuss each answer. When an answer is wrong or
+incomplete, explain, then ask that question again **in different words**,
+until it is answered correctly. Run `make done STEP=concepts` only after the
+developer has answered all three correctly.
 
 Run `make skip STEP=<id>` only when the developer asked to skip that step.
 `status` is `todo`, `stale` (proven once, but the code changed since: re-run

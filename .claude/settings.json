@@ -20,6 +20,7 @@
       "Bash(*upgrade-drill*)",
       "Bash(*UC_CONFIRM_PIN*)",
       "Bash(*upgrade pin*)",
+      "Bash(*FRESH=1*)",
       "Bash(.uc/bin/uc2ctl:*)"
     ]
   },

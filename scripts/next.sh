@@ -49,16 +49,16 @@ check_env() {
 }
 check_skeleton() { stamp_check skeleton any "run: make up && make demo"; }
 check_concepts() { progress_has concepts || { DETAIL+=("read WHAT-NEXT.md Step 3, then: make done STEP=concepts"); return 1; }; }
-check_design()   { todo_in docs/app-design.md; }
+check_design()   { [ -f docs/app-design.md ] || { DETAIL+=("docs/app-design.md is missing — restore it (git checkout docs/app-design.md) and write your design there"); return 1; }; todo_in docs/app-design.md; }
 check_commands() { todo_in src/commands.rs || return 1; cargo check -q 2>/dev/null || { DETAIL+=("cargo check fails — run it to see why"); return 1; }; }
-check_state()    { todo_in src/state.rs src/snapshot.rs || return 1; cargo test -q --lib >/dev/null 2>&1 || { DETAIL+=("cargo test --lib fails"); return 1; }; }
+check_state()    { todo_in src/state.rs src/snapshot.rs tests/state.rs || return 1; cargo test -q --test state >/dev/null 2>&1 || { DETAIL+=("cargo test --test state fails — run it to see why"); return 1; }; }
 check_tests()    { todo_in tests || return 1; stamp_check check "$(code_hash_with_tests)" "run: make check (tests + lint)"; }
-check_client()   { todo_in src/bin/client.rs scripts/demo.sh || return 1; stamp_check demo "$(code_hash)" "run: make restart-services && make demo"; }
+check_client()   { todo_in src/bin/client.rs scripts/demo.sh scripts/probe.sh || return 1; stamp_check demo "$(code_hash)" "run: make restart-services && make demo"; }
 check_failover() { stamp_check failover "$(code_hash)" "run: make kill-leader"; }
 check_snapshots(){ stamp_check snapshots any "run: make snapshot-drill"; }
 check_observe()  { stamp_check observe any "run: make observe"; }
 check_upgrade()  {
-  grep -qE 'pack_version\(1, 0, 0\)' src/identity.rs && { DETAIL+=("FSM_VERSION is still 1.0.0: bump it in src/identity.rs for your v2 behaviour"); return 1; }
+  grep -qE 'pack_version\(1, 0, 0\)' src/identity.rs && { DETAIL+=("FSM_VERSION is still 1.0.0: FIRST run make corpus (before changing any code), THEN make the change and bump FSM_VERSION in src/identity.rs"); return 1; }
   stamp_check upgrade-check any "run: make corpus (before the change), then make upgrade-check" || return 1
   stamp_check upgrade-drill any "run: make upgrade-drill (asks before the one-way pin)"
 }

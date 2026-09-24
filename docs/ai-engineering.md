@@ -71,15 +71,18 @@ match the text anywhere in the command (`Bash(*upgrade-drill*)`,
 before `allow` rules, so the blanket `make` allowance never covers them. The scripts guard the pin as well: `make
 upgrade-drill` asks you to type `PIN`, and `scripts/cluster.sh ctl … upgrade
 pin` refuses without `UC_CONFIRM_PIN=yes`. A pin is a one-way door: there is
-no unpin, and the only rollback is the backup taken before it.
+no unpin, and the only rollback is the backup taken before it. Any command
+containing `FRESH=1` asks too (`Bash(*FRESH=1*)`): `make up FRESH=1` deletes
+the local cluster's nodes, logs and pids.
 
 ## Other agents
 
 `AGENTS.md` is the contract, and it is written for any agent: the project map,
 the commands, the hard rules (determinism; append-only enums; `validate()` for
-every size-bearing field; bump `FSM_VERSION` for any behaviour change; never
+every size-bearing field; bump `FSM_VERSION` for any behaviour change once a
+cluster you keep has run the code, `make up FRESH=1` before that; never
 pin without the developer's explicit go-ahead; never put cluster state under
-`/tmp`; never edit `.uc/`), the evidence rule (show the command and its
+`/tmp`; never edit `.uc/`; scratch files under `target/`), the evidence rule (show the command and its
 output, or say "not verified"), and the tutor protocol.
 
 An agent without Claude Code's skills and hooks works from `AGENTS.md` alone.

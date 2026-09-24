@@ -24,7 +24,7 @@ committed commands in the same order, so `apply` must be deterministic.
 | `src/bin/service.rs` | `<app>-service`: attaches to a node; `replay` / `project` for diff replay |
 | `src/bin/client.rs` | `<app>`: the remote client, through the gateways |
 | `tests/` | `state.rs`, `snapshot.rs` (unit), `determinism.rs` (property), `cli.rs`, `cluster.rs` (3-node smoke) |
-| `scripts/` | cluster, tutor, drills, packaging; reach them through `make` |
+| `scripts/` | cluster, tutor, drills, packaging; reach them through `make`. `scripts/demo.sh` and `scripts/probe.sh` (the drills' write and read) are the app's own |
 | `Makefile` | the one entry point |
 | `upgrade/intent.toml.example` | the diff-replay declaration starter |
 | `WHAT-NEXT.md` | the tutor path: 13 steps, each with Goal, Why, Do it yourself, Ask the agent, Done when, Common mistakes |
@@ -76,6 +76,11 @@ order (nodes, then a serving leader, then services, then gateways).
    command variant is never sent by any client until every service runs the
    new build; an earlier commit fail-stops every old service
    (`corrupt committed frame (fail-stop)`).
+   **Part-1 carve-out:** while only the developer's disposable local cluster
+   has run the code (Steps 5–9), do NOT bump `FSM_VERSION` — restart from an
+   empty log with `make up FRESH=1` instead (after asking: it wipes the local
+   cluster). The bump and the Step-12 flow apply from the moment any cluster
+   the developer must keep has run the code.
 5. **Never run `uc2ctl upgrade pin`, `make upgrade-drill`, or any command with
    `UC_CONFIRM_PIN=yes` without the developer's explicit go-ahead in this
    conversation. A pin is a one-way door:** there is no unpin, and the only
@@ -84,6 +89,8 @@ order (nodes, then a serving leader, then services, then gateways).
    (RAM-backed: `fsync` does nothing and the nodes refuse it).
 7. **`.uc/` is generated.** Change it only through `make bins`,
    `make diffreplay` and the scripts.
+8. **Scratch files go under `target/`**, never outside the project (not
+   `/tmp`, not `$HOME`): `mkdir -p target/scratch` and write there.
 
 ## 5. Evidence
 
@@ -113,8 +120,10 @@ similar:
    done and offer the next one.
 
 Step 3 (`concepts`): ask the three check questions from `WHAT-NEXT.md`
-Step 3, one at a time, and discuss each answer. Run
-`make done STEP=concepts` only after the developer has answered all three.
+Step 3, one at a time, and discuss each answer. When an answer is wrong or
+incomplete, explain, then ask that question again **in different words**,
+until it is answered correctly. Run `make done STEP=concepts` only after the
+developer has answered all three correctly.
 
 Run `make skip STEP=<id>` only when the developer asked to skip that step.
 `status` is `todo`, `stale` (proven once, but the code changed since: re-run

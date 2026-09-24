@@ -1,4 +1,5 @@
 //! Argument handling that must fail fast without a cluster.
+// TODO(app): rewrite these for your client's subcommands; each must fail for the reason it names (WHAT-NEXT.md, Step 7).
 use std::path::PathBuf;
 use std::process::Command;
 
