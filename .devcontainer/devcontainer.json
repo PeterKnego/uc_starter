@@ -1,0 +1,14 @@
+{
+  "name": "uc app",
+  "build": { "dockerfile": "Dockerfile" },
+  "features": {
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+  },
+  "postCreateCommand": "make bins",
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": {
+      "extensions": ["rust-lang.rust-analyzer", "anthropic.claude-code"]
+    }
+  }
+}

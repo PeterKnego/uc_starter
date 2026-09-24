@@ -29,6 +29,8 @@ committed commands in the same order, so `apply` must be deterministic.
 | `upgrade/intent.toml.example` | the diff-replay declaration starter |
 | `WHAT-NEXT.md` | the tutor path: 13 steps, each with Goal, Why, Do it yourself, Ask the agent, Done when, Common mistakes |
 | `docs/` | `app-design.md` (the spec the code is held to), `concepts.md`, `how-to/`, `troubleshooting.md`, `ai-engineering.md` |
+| `.devcontainer/` | the macOS/Windows path: Rust + MSRV toolchains, `cosign`, `cargo-generate`, Claude Code |
+| `compose.yml`, `Dockerfile` | optional, disposable containerized 3-node cluster (README § Containers) |
 | `.uc/` | downloaded UC binaries, tools and machine-local proof stamps — generated, never edited |
 
 ## 3. Commands

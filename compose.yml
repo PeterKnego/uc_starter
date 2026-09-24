@@ -1,0 +1,392 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# A three-node ultima_cluster on ONE host, in containers — the containerized
+# twin of `make up`. Adapted from ultima_cluster's own
+# packaging/compose.yml (v2.13.0).
+#
+# THIS IS A DEMO TOPOLOGY, NOT A PRODUCTION ONE. All three nodes share a
+# kernel, a disk and a power supply, so the majority they form is a majority
+# of processes, not of failure domains: this host dying takes the whole
+# cluster with it, and the fsyncs a write waits for all land on the same
+# device. It is here so you can see a real cluster — real elections, real
+# quorum commits, real gateway redirects — with one command. For anything
+# that must survive a machine, put one node per machine and follow
+# ultima_cluster's docs/how-to/run-a-cluster.md.
+#
+# Not liquid-processed by cargo-generate (only Cargo.toml, uc-app.env,
+# src/identity.rs and README.md are) — every app-specific value below is a
+# `${VAR}` read from uc-app.env / the shell environment, never `{{…}}`.
+#
+#     set -a; . ./uc-app.env; set +a
+#     UC_VERSION=$(cat UC_VERSION) docker compose up -d --build
+#     docker compose logs -f n0
+#     docker run --rm --network "${APP_NAME}-demo_uc2" \
+#         --entrypoint /usr/local/bin/app-client "${APP_NAME}-demo-svc0" \
+#         --gateways gw0:9200,gw1:9201,gw2:9202 --app-id "$APP_ID" put greeting hello
+#     docker run --rm --network "${APP_NAME}-demo_uc2" \
+#         --entrypoint /usr/local/bin/app-client "${APP_NAME}-demo-svc0" \
+#         --gateways gw0:9200,gw1:9201,gw2:9202 --app-id "$APP_ID" get greeting --linearizable
+#     docker compose down -v
+#
+# (`make bins`, `make up` etc. run the SAME cluster without containers, on
+# Linux — see README.md § Devcontainer for when to reach for this instead.)
+#
+# Why `docker run`, not `docker compose run svc0 ...`: `run` re-evaluates
+# this service's `depends_on`, which re-starts the one-shot `init`/`init-key`
+# containers even when the stack is already up — harmless to the cluster
+# (they only re-render the already-identical config files) but it also
+# deletes and regenerates `admin.key` every time (see the `init` step's own
+# comment below), which is needless churn once the cluster is live. Plain
+# `docker run` against the already-built `${APP_NAME}-demo-svc0` image, on
+# the compose network compose already created, does not touch any of that.
+#
+# The uc2 image has no shell, so every `command:` on an n*/gw* service is an
+# exec-form argv, and the one step that genuinely needs a shell — rendering
+# the config files into the volumes — runs in a `busybox` init container
+# instead. It renders TWO files, not six: one node.toml and one gateway.toml,
+# shared by all three of each. Everything that differs per node (id, bind,
+# instance_dir, listen) is a `UC2_*` environment variable on the container,
+# which is the twelve-factor shape and is why the shared files cannot drift
+# apart.
+#
+# Reaching it from the host: the gateways publish 9200-9202 one-to-one, but
+# the addresses a gateway hands out in a REDIRECT come from the [[members]]
+# table below, which uses container names. A client on the host therefore
+# needs those names to resolve — add
+#     127.0.0.1 gw0 gw1 gw2
+# to /etc/hosts and `--gateways gw0:9200,gw1:9201,gw2:9202` works from the
+# host exactly as it does from inside the network (the `docker run` calls
+# above sidestep this by running the client image ON the network).
+#
+# Ports here are FIXED (9100 nodes, 9200-9202 gateways) and independent of
+# this project's BASE_PORT, which only the non-container local cluster
+# (`scripts/cluster.sh`) uses — if your BASE_PORT happens to fall in
+# 9100-9202 and you run `make up` at the same time as this stack, the two
+# don't collide (this stack's node ports are never published to the host),
+# but the gateway ports would; pick a BASE_PORT outside that range if you
+# plan to run both at once.
+#
+# Disk: each node RESERVES ~78 MiB of log buffer and IPC rings at startup,
+# plus journal growth — budget ~500 MiB across the three volumes.
+
+name: ${APP_NAME}-demo
+
+x-uc2-image: &uc2_image ghcr.io/peterknego/uc2:${UC_VERSION}
+
+networks:
+  uc2:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.77.0.0/24
+
+volumes:
+  # One instance directory per node. A node and its service share the same
+  # volume: the service reaches the node through the shared-memory control
+  # page and log buffer that live in there, which is also why they must be
+  # on the same host in the first place.
+  n0:
+  n1:
+  n2:
+  # Config files and the admin key, rendered once by `init` and mounted
+  # read-only everywhere else.
+  conf:
+
+services:
+  # ---------------------------------------------------------------- init
+  # Renders two real config files and hands the volumes to uid 65532, the
+  # uc2 image's non-root account.
+  #
+  # `bind` and this node's own [[members]] entry must be the identical
+  # address, which is why the nodes get static IPs: a node refuses to start
+  # if the two disagree, and it cannot state an address it does not yet know.
+  init:
+    image: busybox:stable
+    user: "0:0"
+    networks:
+      uc2:
+    volumes:
+      - n0:/srv/uc2/n0
+      - n1:/srv/uc2/n1
+      - n2:/srv/uc2/n2
+      - conf:/etc/uc2
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        cat >/etc/uc2/node.toml <<EOF
+        # id / bind / instance_dir are placeholders: every node container
+        # overrides all three via UC2_NODE_ID / UC2_BIND / UC2_INSTANCE_DIR.
+        id = 0
+        bind = "10.77.0.100:9100"
+        instance_dir = "/srv/uc2/n0"
+        app_id = "${APP_ID}"
+
+        [[members]]
+        id = 0
+        addr = "10.77.0.100:9100"
+
+        [[members]]
+        id = 1
+        addr = "10.77.0.101:9100"
+
+        [[members]]
+        id = 2
+        addr = "10.77.0.102:9100"
+
+        # Cleartext node-to-node traffic. Both sections are REQUIRED since
+        # v2.6.0: an absent one is a startup refusal naming it, never a
+        # silent default. On one host with one bridge network that is a
+        # defensible choice; across machines, read
+        # ultima_cluster's docs/how-to/encrypt-node-traffic.md first.
+        [crypto]
+        enabled = false
+
+        # Membership changes (uc2ctl add/promote/demote/remove) must carry an
+        # HMAC signature made with the key below. NOTE the residual: with
+        # [crypto].enabled = false, a follower forwards an authenticated
+        # admin request to the leader over the unauthenticated peer plane —
+        # cluster-wide admin authentication needs both switches on.
+        [admin]
+        auth = "hmac"
+        keys = [{ name = "admin", key_path = "/etc/uc2/admin.key" }]
+
+        # FSM identity (cnc 3.1): the row this app's service attaches to.
+        # REQUIRED, like [crypto]/[admin] above.
+        [services]
+        names = ["${FSM_NAME}"]
+        EOF
+        cat >/etc/uc2/gateway.toml <<EOF
+        # instance_dir / listen are likewise overridden per container, via
+        # UC2_GATEWAY_INSTANCE_DIR / UC2_GATEWAY_LISTEN.
+        [local]
+        instance_dir = "/srv/uc2/n0"
+        app_id = "${APP_ID}"
+        listen = "0.0.0.0:9200"
+
+        # Every gateway's address, keyed by node id — how a gateway that is
+        # NOT on the leader tells a client where to go.
+        [[members]]
+        node_id = 0
+        gateway = "gw0:9200"
+
+        [[members]]
+        node_id = 1
+        gateway = "gw1:9201"
+
+        [[members]]
+        node_id = 2
+        gateway = "gw2:9202"
+
+        # This template's service wraps its state machine in
+        # uc_service::Sessioned (src/bin/service.rs), so the envelope must
+        # stay on: a re-sent write is answered "replayed", never applied
+        # twice.
+        [session]
+        envelope = true
+        EOF
+        rm -f /etc/uc2/admin.key
+        chown -R 65532:65532 /srv/uc2/n0 /srv/uc2/n1 /srv/uc2/n2 /etc/uc2
+        chmod 0755 /etc/uc2
+        echo "init: 2 configs rendered, volumes owned by 65532"
+
+  # A 32-byte, mode-0600 admin key, written by the same uid the nodes run as
+  # so they can read it. Its own step because the image has no shell and
+  # busybox has no uc2ctl.
+  init-key:
+    image: *uc2_image
+    user: "65532:65532"
+    networks:
+      uc2:
+    entrypoint: ["/usr/local/bin/uc2ctl"]
+    command: ["gen-admin-key", "/etc/uc2/admin.key"]
+    volumes:
+      - conf:/etc/uc2
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  # ---------------------------------------------------------------- nodes
+  # ENTRYPOINT is uc2-node, so `command` is just its arguments.
+  n0:
+    image: *uc2_image
+    command: ["--config", "/etc/uc2/node.toml"]
+    environment:
+      UC2_NODE_ID: "0"
+      UC2_BIND: "10.77.0.100:9100"
+      UC2_INSTANCE_DIR: "/srv/uc2/n0"
+    networks:
+      uc2:
+        ipv4_address: 10.77.0.100
+    volumes:
+      - n0:/srv/uc2/n0
+      - conf:/etc/uc2:ro
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/uc2ctl", "status", "--instance-dir", "/srv/uc2/n0", "--app-id", "${APP_ID}"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+    depends_on:
+      init-key:
+        condition: service_completed_successfully
+
+  n1:
+    image: *uc2_image
+    command: ["--config", "/etc/uc2/node.toml"]
+    environment:
+      UC2_NODE_ID: "1"
+      UC2_BIND: "10.77.0.101:9100"
+      UC2_INSTANCE_DIR: "/srv/uc2/n1"
+    networks:
+      uc2:
+        ipv4_address: 10.77.0.101
+    volumes:
+      - n1:/srv/uc2/n1
+      - conf:/etc/uc2:ro
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/uc2ctl", "status", "--instance-dir", "/srv/uc2/n1", "--app-id", "${APP_ID}"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+    depends_on:
+      init-key:
+        condition: service_completed_successfully
+
+  n2:
+    image: *uc2_image
+    command: ["--config", "/etc/uc2/node.toml"]
+    environment:
+      UC2_NODE_ID: "2"
+      UC2_BIND: "10.77.0.102:9100"
+      UC2_INSTANCE_DIR: "/srv/uc2/n2"
+    networks:
+      uc2:
+        ipv4_address: 10.77.0.102
+    volumes:
+      - n2:/srv/uc2/n2
+      - conf:/etc/uc2:ro
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/uc2ctl", "status", "--instance-dir", "/srv/uc2/n2", "--app-id", "${APP_ID}"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+    depends_on:
+      init-key:
+        condition: service_completed_successfully
+
+  # ------------------------------------------------------------- services
+  # The half that runs this app's state machine — built from this project's
+  # own Dockerfile, one per node, sharing that node's instance directory
+  # (the shared-memory pair, not a network hop).
+  svc0:
+    build:
+      context: .
+      args:
+        APP_NAME: ${APP_NAME}
+    command: ["--instance-dir", "/srv/uc2/n0", "--app-id", "${APP_ID}"]
+    networks:
+      uc2:
+    volumes:
+      - n0:/srv/uc2/n0
+    restart: on-failure
+    depends_on:
+      n0:
+        condition: service_healthy
+
+  svc1:
+    build:
+      context: .
+      args:
+        APP_NAME: ${APP_NAME}
+    command: ["--instance-dir", "/srv/uc2/n1", "--app-id", "${APP_ID}"]
+    networks:
+      uc2:
+    volumes:
+      - n1:/srv/uc2/n1
+    restart: on-failure
+    depends_on:
+      n1:
+        condition: service_healthy
+
+  svc2:
+    build:
+      context: .
+      args:
+        APP_NAME: ${APP_NAME}
+    command: ["--instance-dir", "/srv/uc2/n2", "--app-id", "${APP_ID}"]
+    networks:
+      uc2:
+    volumes:
+      - n2:/srv/uc2/n2
+    restart: on-failure
+    depends_on:
+      n2:
+        condition: service_healthy
+
+  # ------------------------------------------------------------- gateways
+  # One TCP front door per node. Three, not one: REDIRECT only works if there
+  # is somewhere to redirect to — a client that dials a follower's gateway is
+  # told which member holds the leadership.
+  gw0:
+    image: *uc2_image
+    entrypoint: ["/usr/local/bin/uc2-gateway"]
+    command: ["--config", "/etc/uc2/gateway.toml"]
+    environment:
+      UC2_GATEWAY_INSTANCE_DIR: "/srv/uc2/n0"
+      UC2_GATEWAY_LISTEN: "0.0.0.0:9200"
+    networks:
+      uc2:
+    ports:
+      - "9200:9200"
+    volumes:
+      - n0:/srv/uc2/n0
+      - conf:/etc/uc2:ro
+    restart: on-failure
+    depends_on:
+      n0:
+        condition: service_healthy
+
+  gw1:
+    image: *uc2_image
+    entrypoint: ["/usr/local/bin/uc2-gateway"]
+    command: ["--config", "/etc/uc2/gateway.toml"]
+    environment:
+      UC2_GATEWAY_INSTANCE_DIR: "/srv/uc2/n1"
+      UC2_GATEWAY_LISTEN: "0.0.0.0:9201"
+    networks:
+      uc2:
+    ports:
+      - "9201:9201"
+    volumes:
+      - n1:/srv/uc2/n1
+      - conf:/etc/uc2:ro
+    restart: on-failure
+    depends_on:
+      n1:
+        condition: service_healthy
+
+  gw2:
+    image: *uc2_image
+    entrypoint: ["/usr/local/bin/uc2-gateway"]
+    command: ["--config", "/etc/uc2/gateway.toml"]
+    environment:
+      UC2_GATEWAY_INSTANCE_DIR: "/srv/uc2/n2"
+      UC2_GATEWAY_LISTEN: "0.0.0.0:9202"
+    networks:
+      uc2:
+    ports:
+      - "9202:9202"
+    volumes:
+      - n2:/srv/uc2/n2
+      - conf:/etc/uc2:ro
+    restart: on-failure
+    depends_on:
+      n2:
+        condition: service_healthy

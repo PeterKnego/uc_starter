@@ -67,6 +67,41 @@ The whole loop runs inside it: editing, building, the three-node cluster, the
 client and the agent. On macOS and Windows, use it for everything. The scripts
 refuse to start a node on a non-Linux host and point you here.
 
+## Containers (optional)
+
+`compose.yml` and the root `Dockerfile` run the same three-node-plus-gateways
+topology as `make up`, but as containers instead of local processes — a demo
+you can throw away with one command, not a deployment shape (see the file's
+own header comment for why: shared kernel, disk and power supply, so its
+"quorum" is a majority of processes, not of machines). It builds your service
+and client from the root `Dockerfile` and runs three
+`ghcr.io/peterknego/uc2` node and gateway containers alongside them:
+
+```bash
+set -a; . ./uc-app.env; set +a
+UC_VERSION=$(cat UC_VERSION) docker compose up -d --build
+docker run --rm --network "${APP_NAME}-demo_uc2" \
+    --entrypoint /usr/local/bin/app-client "${APP_NAME}-demo-svc0" \
+    --gateways gw0:9200,gw1:9201,gw2:9202 --app-id "$APP_ID" put greeting hello
+docker run --rm --network "${APP_NAME}-demo_uc2" \
+    --entrypoint /usr/local/bin/app-client "${APP_NAME}-demo-svc0" \
+    --gateways gw0:9200,gw1:9201,gw2:9202 --app-id "$APP_ID" get greeting --linearizable
+docker compose down -v
+```
+
+(`docker run` against the already-built `svc0` image, not `docker compose run
+svc0`: `run` re-evaluates `depends_on` and restarts the one-shot `init`/
+`init-key` containers — harmless, but they also regenerate `admin.key` every
+time, needless churn once the cluster is live. See `compose.yml`'s own header
+for the full reasoning.)
+
+This is separate from the devcontainer above: the devcontainer is where you
+edit and run `make up` (real processes, real `~/.uc-starter` state); compose
+is a self-contained, disposable cluster in its own containers — useful for
+trying the project without a Rust toolchain at all, or as a CI smoke test.
+Its ports (9100 nodes, 9200-9202 gateways) are fixed, independent of this
+project's `BASE_PORT`.
+
 ## With an agent, or without one
 
 The tutor is [`WHAT-NEXT.md`](WHAT-NEXT.md): thirteen steps, from running the
@@ -139,6 +174,7 @@ against one node, fetch one node's metrics, print the cluster's directory.
 | `docs/` | the design note, concepts, how-tos, AI engineering, troubleshooting |
 | `AGENTS.md`, `CLAUDE.md`, `.claude/` | the agent kit |
 | `.devcontainer/` | the container path for macOS and Windows |
+| `compose.yml`, `Dockerfile` | the optional, disposable containerized demo cluster |
 
 ## Ports and where state lives
 
