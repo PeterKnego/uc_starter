@@ -5,11 +5,15 @@
 # and a node.toml + gateway.toml per host. See docs/how-to/deploy.md.
 # shellcheck source=scripts/lib.sh
 . "$(dirname "$0")/lib.sh"
+set -e   # a failed cp/sed/tar must not leave a bundle that looks complete
 OFF=0   # a deploy never uses the local cluster's port offset
 IFS=, read -r -a H <<<"${HOSTS:-}"
 [ "${#H[@]}" = 3 ] || die "HOSTS needs exactly three addresses: make package HOSTS=ip0,ip1,ip2"
 for h in "${H[@]}"; do
-  case "$h" in ''|0.0.0.0|*[!0-9A-Za-z.:-]*) die "'$h' is not a host address (each node binds exactly its own address, never 0.0.0.0)" ;; esac
+  case "$h" in
+    *:*) die "'$h' looks like an IPv6 address — this bundle supports IPv4 addresses (or host names) only" ;;
+    ''|0.0.0.0|*[!0-9A-Za-z.-]*) die "'$h' is not a host address (each node binds exactly its own address, never 0.0.0.0)" ;;
+  esac
 done
 [ "$(printf '%s\n' "${H[@]}" | sort -u | wc -l)" = 3 ] || die "HOSTS must be three different machines"
 for b in uc2-node uc2ctl uc2-gateway; do [ -x "$UC_BIN/$b" ] || die "$UC_BIN/$b is missing — run make bins"; done

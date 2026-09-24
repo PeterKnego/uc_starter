@@ -91,8 +91,12 @@ envelope **off**, 64-byte payloads and 1024 requests in flight:
 - the best aggregate over up to 16 remote connections (N = 16):
   **1,464,381 responses/s**, 0.836× (gate row b).
 
-That is throughput under deep pipelining, not latency. Latency was not
-measured head-to-head on one rig: UC's service-time measurement
+The same run's `HOP-TABLE` also records the latency under that load (1024
+requests in flight): the direct `Engine` at **0.545 ms p50 / 0.825 ms p99**,
+one remote connection at **0.935 ms p50 / 1.269 ms p99**. That is loaded
+latency, mostly queueing behind 1024 in-flight requests (1024 ÷ 1.75 M/s ≈ 0.58 ms). *Unloaded*
+latency (one request at a time) was not measured head-to-head on one rig:
+UC's service-time measurement
 (`docs/benchmarks/uc2-service-time-2026-09-16.md`) timed the shared-memory
 client alone. For a client that sends one request and waits, the round trip,
 not the transport, sets the rate; see UC's

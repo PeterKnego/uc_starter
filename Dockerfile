@@ -2,7 +2,7 @@
 # liquid-processed (cargo-generate.toml only templates Cargo.toml, uc-app.env,
 # src/identity.rs and README.md), so APP_NAME arrives as a build ARG, read by
 # compose.yml from uc-app.env — never `{{project-name}}` here.
-FROM rust:1.96-bookworm AS builder
+FROM rust:1.96.0-bookworm AS builder
 ARG APP_NAME
 WORKDIR /src
 COPY . .

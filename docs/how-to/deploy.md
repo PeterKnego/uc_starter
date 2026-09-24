@@ -169,9 +169,12 @@ above avoids that churn.
 - From a client machine, give the client all three gateways:
 
   ```bash
-  <APP_NAME> --gateways ADDR0:<BASE_PORT+100>,ADDR1:<BASE_PORT+101>,ADDR2:<BASE_PORT+102> put hello world
-  <APP_NAME> --gateways ADDR0:<BASE_PORT+100>,ADDR1:<BASE_PORT+101>,ADDR2:<BASE_PORT+102> get hello --linearizable
+  <APP_NAME> --gateways ADDR0:<BASE_PORT+100>,ADDR1:<BASE_PORT+101>,ADDR2:<BASE_PORT+102> <a command from your demo>
+  <APP_NAME> --gateways ADDR0:<BASE_PORT+100>,ADDR1:<BASE_PORT+101>,ADDR2:<BASE_PORT+102> <the read that shows it> --linearizable
   ```
+
+  Run your demo's commands (the ones `scripts/demo.sh` sends), with these
+  `--gateways`.
 
 - The wire-crypto counters on the followers read 0 for `auth_failed`,
   `unknown_peer` and `cleartext_peer` (UC's *Encrypt traffic between nodes*
@@ -196,7 +199,7 @@ Then, on your development machine: `make done STEP=deploy`.
   key to every allowlist first).
 - **Upgrades.** A new `FSM_VERSION` goes through the pinned upgrade
   (`WHAT-NEXT.md` Step 12, and UC's *Upgrade an application*). A new UC
-  release is a flag day: see [Upgrade ultima_cluster](upgrade-uc.md).
+  release is a whole-cluster stop and start: see [Upgrade ultima_cluster](upgrade-uc.md).
 
 Upstream: [Run a cluster on real hosts](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/run-a-cluster.md),
 [Encrypt traffic between nodes](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/encrypt-node-traffic.md),

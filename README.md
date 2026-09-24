@@ -203,6 +203,8 @@ the release's systemd units and alert rules (`.uc/packaging`), the tutor's
 proof stamps (`.uc/state`) and `uc2-diffreplay` (`.uc/cargo`); it is not
 committed. `.uc-progress` is committed: it records the steps you marked done
 or skipped. `upgrade/corpus/`, `upgrade/old/` and `dist/` are generated.
+Commit `Cargo.lock` with your code: `make lint` builds with `--locked`, and it
+pins the crates a teammate's build resolves.
 
 ## Read next
 

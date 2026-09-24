@@ -15,7 +15,7 @@ to production: snapshots, monitoring, a safe upgrade, and real machines.
 Part 1 is finished on *this machine* once `make next` first reports a Part 2
 step. It prints "Part 1 complete" and records that under `.uc/state/`, which is
 not committed. A teammate's fresh clone re-proves the steps that only a machine
-can show (the running cluster, the demo, the failover). After Part 1, editing
+can show (`make check`, the running cluster, the demo, the failover). After Part 1, editing
 code never sends you back. `make next` adds a *note* that an earlier proof is
 stale, and you re-run it when it suits you.
 
@@ -50,7 +50,7 @@ and [Limits](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/refe
 **Common mistakes.**
 - Running on macOS outside the devcontainer. The scripts refuse by name and point you at the devcontainer.
 - Putting the cluster root under `/tmp`. `/tmp` is often RAM-backed, where `fsync` does nothing, so the nodes refuse it. The default root is `~/.uc-starter/<your-app>`. If you set `UC_ROOT`, point it at a real disk.
-- Editing `UC_VERSION` by hand. The exact crate pins in `Cargo.toml` must move with it, and every UC minor release so far has been a flag day. Use `make uc-upgrade VERSION=<x>`.
+- Editing `UC_VERSION` by hand. The exact crate pins in `Cargo.toml` must move with it, and a UC upgrade is a whole-cluster stop and start, never one process at a time. Use `make uc-upgrade VERSION=<x>`.
 
 ### Step 2 — Run the skeleton
 <!-- step: skeleton -->
@@ -79,7 +79,7 @@ and [the state-machine contract](https://github.com/PeterKnego/ultima_cluster/bl
 2. `make demo`. It runs put, get, delete and get again through the gateways, and prints `PASS`.
 3. `make status`. It runs `uc2ctl status` on every node. Find the leader (`leader=true can_serve=true`) and the commit position.
 4. Logs are in `~/.uc-starter/<your-app>/logs/`, one file per process.
-5. `make down` stops the cluster and keeps its state. `make up FRESH=1` starts over from an empty log.
+5. `make down` stops the cluster and keeps its state. `make up FRESH=1` deletes the three node directories (`n0`–`n2`), the logs and the pid files, and starts over from an empty log; your code, `.uc/state` and any backups are kept.
 
 **Ask the agent.** > "Run the skeleton and walk me through what each of the ten processes is doing."
 
@@ -206,8 +206,9 @@ and [the change taxonomy](https://github.com/PeterKnego/ultima_cluster/blob/v2.1
 **Do it yourself.**
 1. In `src/commands.rs`, rewrite `Command`, `Response`, `Query` and `QueryResponse` from your design note.
 2. Set the `MAX_*` limits so your largest command stays under the ceiling. Rewrite `validate()` to check every variable-length field.
-3. `cargo check` compiles the whole crate, so `src/state.rs`, `src/snapshot.rs` and `src/bin/client.rs` must compile too. Give their match arms a minimal body for now. Steps 6 and 8 do them properly, so leave their TODO markers in place.
+3. `cargo check` compiles the whole crate, so `src/lib.rs`, `src/state.rs`, `src/snapshot.rs` and `src/bin/client.rs` must compile too. In `src/lib.rs`, fix the `pub use commands::{…}` re-exports to name your types and limits. Give the match arms in the others a minimal body for now. Steps 6 and 8 do them properly, so leave their TODO markers in place. The files under `tests/` stop compiling here; Steps 6 and 7 rewrite them.
 4. Delete the TODO marker line in `src/commands.rs`. Run `cargo check`.
+5. Commit `Cargo.lock` with your code: `make lint` builds with `--locked`, and a teammate's build should resolve the same crates as yours.
 
 **Ask the agent.** > "Do step 5 for me from docs/app-design.md and explain the diff."
 
@@ -222,7 +223,7 @@ passes.
 ### Step 6 — State, apply and query
 <!-- step: state -->
 
-**Goal.** Write your state, `apply`, `query` and the snapshot projection in `src/state.rs` and `src/snapshot.rs`.
+**Goal.** Write your state, `apply`, `query` and the snapshot projection in `src/state.rs` and `src/snapshot.rs`, with unit tests in `tests/state.rs`.
 
 **Why.** `apply` runs on every replica, for every committed command, in log
 order. The same state plus the same command must give the same result
@@ -240,12 +241,13 @@ after the `match`. See
 1. In `src/state.rs`, replace `State` with your data. Use `BTreeMap`/`BTreeSet` and integers.
 2. Write one `apply` arm per command and one `query` arm per query. Keep `self.last_applied = Some(ctx.position)`.
 3. In `src/snapshot.rs`, rewrite `project()`: one line per record, in sorted order. Diff replay (Step 12) compares this text.
-4. Delete the three TODO marker lines in `src/state.rs` and the one in `src/snapshot.rs`. Run `cargo test --lib` and `scripts/lint-determinism.sh --all`.
+4. Rewrite `tests/state.rs` for your commands: one test per command and query, plus the `validate` refusals. These are the first tests that run against your code.
+5. Delete the three TODO marker lines in `src/state.rs`, the one in `src/snapshot.rs` and the one in `tests/state.rs`. Run `cargo test --test state` and `scripts/lint-determinism.sh --all`.
 
 **Ask the agent.** > "Do step 6 for me and point out every determinism hazard you avoided."
 
-**Done when.** No TODO marker is left in `src/state.rs` or `src/snapshot.rs`,
-and `cargo test --lib` passes.
+**Done when.** No TODO marker is left in `src/state.rs`, `src/snapshot.rs` or
+`tests/state.rs`, and `cargo test --test state` passes.
 
 **Common mistakes.**
 - Using `HashMap` or `HashSet`. Their iteration order differs from process to process, so anything that iterates them (a snapshot, a projection, a list answer) differs between replicas. `make lint` rejects them.
@@ -273,10 +275,11 @@ plainly: your state machine's determinism is your responsibility. See
 
 **Do it yourself.**
 1. In `tests/determinism.rs`, give `arb_command` one strategy per command, with small key spaces so commands collide.
-2. Rewrite `tests/state.rs` and `tests/snapshot.rs` for your commands: one test per command, plus the `validate` refusals.
-3. Update `tests/cli.rs` if your client's subcommands changed.
-4. Delete the TODO marker line in `tests/determinism.rs`.
-5. `make check`. It runs `cargo test`, then `make lint`: fmt, clippy, clippy on the 1.89 toolchain (the minimum supported Rust), and the determinism grep. If 1.89 is missing: `rustup toolchain install 1.89.0 --component clippy`.
+2. Rewrite `tests/snapshot.rs` for your state: the image round-trips, and the projection is stable.
+3. Rewrite `tests/cli.rs` for your client's subcommands. Each test must fail for the reason it names, not because a subcommand no longer exists.
+4. Delete the TODO marker lines in `tests/determinism.rs`, `tests/snapshot.rs` and `tests/cli.rs`.
+5. `cargo fmt`, so `make lint`'s format check passes.
+6. `make check`. It runs `cargo test`, then `make lint`: fmt, clippy, clippy on the 1.89 toolchain (the minimum supported Rust), and the determinism grep. If 1.89 is missing: `rustup toolchain install 1.89.0 --component clippy`.
 
 **Ask the agent.** > "Extend the tests to cover every command I added, then run make check and fix what fails."
 
@@ -313,16 +316,18 @@ and [the remote protocol](https://github.com/PeterKnego/ultima_cluster/blob/v2.1
 1. In `src/bin/client.rs`, write one `Sub` variant per command and query. Build the `Command` and call `validate()` before connecting. Print each response on one line.
 2. Give read subcommands a `--linearizable` flag, like the skeleton's `get`.
 3. In `scripts/demo.sh`, rewrite the `expect` lines for your commands. Keep the shape: a description, a substring the output must contain, then the arguments.
-4. Delete the TODO marker lines in `src/bin/client.rs` and `scripts/demo.sh`.
-5. `make check`. You edited `src/`, so Step 7's proof is stale until you re-run it.
-6. If you changed `Command` since this cluster was started, start the local cluster fresh: `make up FRESH=1`.
-7. `make restart-services`. It rebuilds, then restarts your service on every node.
-8. `make demo`.
+4. In `scripts/probe.sh`, rewrite `probe_write`, `probe_read` and `probe_expect`: one write your app accepts and the linearizable read that shows it. The Part-2 drills (Steps 10 and 12) use exactly these, and `make demo` checks them.
+5. Delete the TODO marker lines in `src/bin/client.rs`, `scripts/demo.sh` and `scripts/probe.sh`.
+6. `make check`. You edited `src/`, so Step 7's proof is stale until you re-run it.
+7. If you changed `Command` since this cluster was started, start the local cluster fresh: `make up FRESH=1` (it deletes the nodes' state, logs and pids; code and `.uc/state` stay).
+8. `make restart-services`. It rebuilds, then restarts your service on every node.
+9. `make demo`.
 
 **Ask the agent.** > "Do step 8 for me: client subcommands and demo lines for every command, then run the cluster demo."
 
-**Done when.** No TODO marker is left in `src/bin/client.rs` or
-`scripts/demo.sh`, and `make demo` has passed against the current code. The proof
+**Done when.** No TODO marker is left in `src/bin/client.rs`,
+`scripts/demo.sh` or `scripts/probe.sh`, and `make demo` has passed against
+the current code. The proof
 hashes `src/`, `Cargo.toml` and `Cargo.lock`, so a later code edit makes it stale.
 
 **Common mistakes.**
@@ -349,7 +354,7 @@ session answers it `replayed` or applies it once. See
 
 **Do it yourself.**
 1. `make up` if the cluster is not running, then `make status` to see who leads.
-2. `make kill-leader`. It SIGKILLs the leader's node and service, waits for a new leader, runs the demo against it, then restarts the old node, service and gateway.
+2. `make kill-leader`. It SIGKILLs the leader's node and service, waits for a new leader, runs the demo against it, then restarts the old node, waits for it to rejoin as a follower, restarts its service and gateway, and checks all three are back.
 3. `make status`. The old leader is back as a follower, at the same commit position.
 4. Read the old leader's node log in `~/.uc-starter/<your-app>/logs/` to see it rejoin.
 
@@ -391,9 +396,9 @@ and [Keep the journal from growing without bound](https://github.com/PeterKnego/
 
 **Do it yourself.**
 1. `make up` if needed.
-2. `make snapshot-drill`. It writes a value, commands an instant (`uc2ctl snapshot`), waits until all three nodes hold the complete set at P, SIGKILLs one service, and restarts it. It waits for the service to re-attach with a new `incarnation=` and catch up (`lag=0`), reads the value back linearizably, and tells you whether the service installed the snapshot or replayed the journal.
+2. `make snapshot-drill`. It writes a value through your `scripts/probe.sh`, commands an instant (`uc2ctl snapshot`), waits until all three nodes hold the complete set at P, SIGKILLs one service, and restarts it. It waits for the service to re-attach with a new `incarnation=` and catch up (`lag=0`), reads the value back linearizably, and tells you whether the service installed the snapshot or replayed the journal.
 3. `scripts/cluster.sh snapshot-show 0` shows each state machine's newest artifact and the complete `set=`.
-4. For a cadence instead of on-demand instants: `UC_SNAPSHOT_INTERVAL=<bytes> make up FRESH=1`.
+4. Optional, and it wipes the local cluster: for a cadence instead of on-demand instants, `UC_SNAPSHOT_INTERVAL=<bytes> make up FRESH=1`.
 
 **Ask the agent.** > "Run the snapshot drill. If the restarted service replayed the journal, explain why it did not need the snapshot, and what I would have to do for it to install the snapshot instead."
 
@@ -445,12 +450,13 @@ stalled, a service absent or wedged, and snapshots that never complete. See
 
 **Why.** **The pin is a one-way door: there is no unpin, and the only rollback is the backup taken before the pin, restored on every node.**
 Your log is replayed for as long as the cluster lives, so a behaviour change
-cannot simply be swapped in. First, bump `FSM_VERSION` in `src/identity.rs`: any
-change to what `apply` does is a new version. Second, prove the change. Capture a
-*corpus* (one snapshot plus a span of real log) with the old build. Declare in
+cannot simply be swapped in. First, before you touch the code, capture a
+*corpus* (one snapshot plus a span of real log) with the old build. Second, make
+the change and bump `FSM_VERSION` in `src/identity.rs`: any change to what
+`apply` does is a new version. Third, prove the change. Declare in
 `upgrade/intent.toml` which commands you changed and which outputs should differ.
 `uc2-diffreplay` replays the corpus through both builds and fails on any
-difference you did not declare, and on any declared one it did not see. Third,
+difference you did not declare, and on any declared one it did not see. Last,
 roll out with the pin procedure. Take a coordinated instant P and back up every
 node. Pin the row: from then on every node refuses the old binary by name, and
 the new one installs the snapshot at P before it replays anything. Stop *every*
@@ -461,11 +467,11 @@ and [Diff replay an FSM change](https://github.com/PeterKnego/ultima_cluster/blo
 
 **Do it yourself.**
 1. `make up`, then `make diffreplay`. It installs `uc2-diffreplay` into `.uc/cargo`.
-2. `make corpus`, *before* you change any code. Its traffic is your `scripts/demo.sh`: it runs the demo, takes an instant, runs the demo again above it, and exports that span to `upgrade/corpus/`. It copies the binary the cluster is running (taken from the live service process, not rebuilt from your source) to `upgrade/old/` and copies `upgrade/intent.toml.example` to `upgrade/intent.toml`. A corpus proves only what it exercises, so first make sure the demo sends the command you are about to change, with inputs where the change shows. `make next` asks you to bump `FSM_VERSION` first; capture the corpus before you do. `make corpus` refuses once `src/identity.rs` names a different version from the one the cluster runs, and when no service is running.
+2. `make corpus`, *before* you change any code. Its traffic is your `scripts/demo.sh`: it runs the demo, takes an instant, runs the demo again above it, and exports that span to `upgrade/corpus/`. It copies the service binary the cluster is running (taken from the live service process, not rebuilt from your source) and the client built beside it to `upgrade/old/`, and copies `upgrade/intent.toml.example` to `upgrade/intent.toml` only when that file does not exist yet. A corpus proves only what it exercises, so first make sure the demo sends the command you are about to change, with inputs where the change shows. `make next` names both in this order: the corpus first, then the bump. `make corpus` refuses once `src/identity.rs` names a different version from the one the cluster runs, when the build on disk is not the one the cluster runs, and when no service is running.
 3. Make the behaviour change. Bump `FSM_VERSION` in `src/identity.rs`, for example to `pack_version(1, 1, 0)`. If the shape of `State` changed, bump `IMAGE_VERSION` in `src/snapshot.rs` and keep reading the old image.
 4. Edit `upgrade/intent.toml`. Map each command's tag byte (its variant index, after the 16-byte session envelope) to an arm name; the template's `"00" = "put"` and `"01" = "delete"` are the registry's. List the arms you touched. Add one `[[expect]]` per output you meant to change: `surface = "response"` with the `arm` for a changed reply, or `surface = "projection_end"` with no arm when the stored state ends up different.
 5. `make upgrade-check`, until it prints PASS. On FAIL, `upgrade/report.json` names each problem: `Undeclared`, `Unexplained` or `Absent`. A PASS counts only for the code and `upgrade/intent.toml` it ran against; a later FAIL, or any edit to either, withdraws it.
-6. `make upgrade-drill`. It refuses unless step 5's PASS is for exactly this code. It shows both versions and asks you to type `PIN`. Then it builds the new version, takes the instant P, waits until every node holds the complete set at P, backs up every node (into `backups/` under `scripts/cluster.sh root`), pins, and confirms the pin on every node. It stops every service, starts the new build everywhere, and checks that each one logged `pinned install of snap-P`, and that a value written before the upgrade still reads back. If the drill stops after the pin has committed, do not start it over: the new backups would carry the pin, so they could not take you back. It refuses to, and names the way on: `make upgrade-drill RESUME=1`, which runs only the stop-all, start-all and verify steps.
+6. `make upgrade-drill`. It refuses unless step 5's PASS is for exactly this code. It shows both versions and asks you to type `PIN`. Then it builds the new version, checks again that the PASS still covers exactly this code, corpus and old binaries, writes a canary through `scripts/probe.sh` with the OLD client (a new client never talks to old services), takes the instant P, waits until every node holds the complete set at P, backs up every node (into `backups/` under `scripts/cluster.sh root`), pins, and confirms the pin on every node. It stops every service, starts the new build everywhere, and checks that each one logged `pinned install of snap-P` and that the canary reads back. Last it takes one more instant and checks `uc2_snapshot_hash_mismatch` is 0 on every node: all replicas agree on the upgraded state. If the drill stops after the pin has committed, do not start it over: the new backups would carry the pin, so they could not take you back. It refuses to, and names the way on: `make upgrade-drill RESUME=1`, which runs only the stop-all, start-all and verify steps.
 
 **Ask the agent.** > "Walk me through my first upgrade: draft intent.toml from my diff, run upgrade-check, and stop before the pin so I can confirm it."
 
@@ -475,7 +481,7 @@ and [Diff replay an FSM change](https://github.com/PeterKnego/ultima_cluster/blo
 **Common mistakes.**
 - Pinning before backing up. A backup taken after the pin carries the pin, so it cannot take you back. The drill backs up first. On a real cluster, also copy the backups off the nodes.
 - Starting any new service before every old one is stopped. In a mixed row, a new leader can acknowledge a write that an old replica cannot apply. Stop them all, then start them all.
-- Running `make restart-services` after bumping `FSM_VERSION` but before the pin. Nothing sanctions the new build yet. If the journal below the snapshot has been purged, the new build is refused by name, because the snapshot was built by the old version. If it has not, the new build quietly rebuilds from the whole log under the new code, which is exactly what the pin exists to prevent. Either way the drill no longer finds an old version to upgrade from. Use `make upgrade-drill`. If it already happened, check out the old code, run `make restart-services`, and start again from step 3.
+- Running `make restart-services` after bumping `FSM_VERSION` but before the pin. It refuses, and `make up` warns about services running an older build, because nothing sanctions the new build yet. If the journal below the snapshot has been purged, the new build is refused by name, because the snapshot was built by the old version. If it has not, the new build quietly rebuilds from the whole log under the new code, which is exactly what the pin exists to prevent. Either way the drill no longer finds an old version to upgrade from. Use `make upgrade-drill`. If it already happened (with `FORCE=1`), check out the old code, run `FORCE=1 make restart-services`, and start again from step 3.
 - Skipping the corpus because "the change is small". Diff replay is how you learn that the change is *only* what you meant.
 
 ### Step 13 — Deploy to three machines

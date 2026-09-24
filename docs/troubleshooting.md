@@ -149,8 +149,8 @@ upstream section before you act.
 - nodes that stop agreeing after one of them was restarted.
 
 **Cause.** `make uc-upgrade` moves the pins and the build; the processes
-already running keep the old binaries until they stop. Every UC minor release
-so far has been a flag day: old and new nodes, and old and new services and
+already running keep the old binaries until they stop. A UC upgrade is a
+whole-cluster stop and start: old and new nodes, and old and new services and
 nodes, must never run together. Some combinations stall; some diverge
 silently.
 

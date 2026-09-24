@@ -1,3 +1,5 @@
+// LITERAL-CHECK {{not_a_placeholder}} — proves the generator copies Rust
+// sources verbatim (the template's generator test). Harmless; leave it.
 //! Three nodes, three services, three gateways; the demo; a leader kill; the
 //! demo again. `cargo test --release --features cluster-tests --test cluster`.
 #![cfg(feature = "cluster-tests")]

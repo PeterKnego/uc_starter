@@ -22,7 +22,7 @@ path = "src/bin/client.rs"
 # The three-node cluster smoke spawns real processes; opt in.
 cluster-tests = []
 
-# Exact pins: every ultima_cluster minor so far has been a wire flag day.
+# Exact pins: a UC upgrade is a whole-cluster stop and start, crates included.
 # Move them only with `make uc-upgrade VERSION=x`.
 [dependencies]
 uc_service = "=2.13.0"

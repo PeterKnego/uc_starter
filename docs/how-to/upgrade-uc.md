@@ -4,9 +4,10 @@ Move this project to a newer UC release. This is a different thing from
 upgrading *your* state machine (`WHAT-NEXT.md` Step 12): here the platform
 changes under an unchanged app.
 
-**Every UC minor release so far has been a flag day**: the node-to-node wire
-format or the shared-memory control page changed, and old and new nodes must
-never run together. Plan for a coordinated stop.
+**A UC upgrade is a whole-cluster stop and start.** A UC release can change
+the node-to-node wire format or the shared-memory control page (a flag day),
+and then old and new nodes must never run together. This project's procedure
+treats every UC upgrade that way, so plan for a coordinated stop.
 
 ## 1. Move the pins
 
@@ -50,7 +51,7 @@ make check         # tests + lints against the new crates
 Stop first. `make bins` replaces the binaries in `.uc/bin`, and any process
 started after that (a `make kill-leader` restart, a `scripts/cluster.sh start`)
 would be a new-version process joining old-version ones: exactly the
-mixed-version state a flag day forbids. `make next` checks that
+mixed-version state this procedure forbids. `make next` checks that
 `.uc/bin/uc2-node --version` matches `UC_VERSION`.
 
 ## 4. Start the local cluster fresh

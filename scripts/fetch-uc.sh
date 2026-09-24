@@ -19,10 +19,13 @@ curl -fsSL -o "$DL/SHA256SUMS" "$URL/SHA256SUMS"
 if command -v cosign >/dev/null; then
   curl -fsSL -o "$DL/$NAME.tar.gz.sigstore.json" "$URL/$NAME.tar.gz.sigstore.json"
   # The identity flags are the release page's own (ultima_cluster release.yml).
-  cosign verify-blob --bundle "$DL/$NAME.tar.gz.sigstore.json" \
+  # stdout is silenced; stderr is kept and shown when verification fails.
+  if ! err="$(cosign verify-blob --bundle "$DL/$NAME.tar.gz.sigstore.json" \
     --certificate-identity-regexp 'https://github.com/PeterKnego/ultima_cluster/.github/workflows/release.yml@refs/tags/v.*' \
-    --certificate-oidc-issuer https://token.actions.githubusercontent.com "$DL/$NAME.tar.gz" >/dev/null 2>&1 \
-    || die "cosign signature verification failed for $NAME.tar.gz"
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com "$DL/$NAME.tar.gz" 2>&1 >/dev/null)"; then
+    printf '%s\n' "$err" >&2
+    die "cosign signature verification failed for $NAME.tar.gz (cosign's output above)"
+  fi
   echo "signature verified (cosign)"
 else
   echo "cosign not installed: checksum verified, signature not checked"

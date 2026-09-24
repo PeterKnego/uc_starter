@@ -37,16 +37,32 @@ Out: `upgrade/intent.toml` (copied from `upgrade/intent.toml.example` by
    `"01" = "delete"`, a third variant `"02"`. Confirm against the corpus,
    not by eye:
    ```bash
-   upgrade/old/*-service replay --corpus upgrade/corpus --out $HOME/scratch/trace.json
-   python3 -c 'import json,sys; [print(e["pos"], e["kind"], bytes(e["tag"]).hex()) for e in json.load(open(sys.argv[1]))["entries"]]' $HOME/scratch/trace.json
+   mkdir -p target/scratch
+   upgrade/old/*-service replay --corpus upgrade/corpus --out target/scratch/trace.json
+   python3 -c 'import json,sys; [print(e["pos"], e["kind"], bytes(e["tag"]).hex()) for e in json.load(open(sys.argv[1]))["entries"]]' target/scratch/trace.json
    ```
-   Drop the first 16 bytes (32 hex chars); the next byte is the tag.
-3. `[touched] arms = [...]`: exactly the arms the change may move.
+   Drop the first 16 bytes (32 hex chars); the next byte is the tag. Scratch
+   files stay under `target/`, never outside the project.
+3. `[timers]`: map each timer id to an arm name, the id as a decimal string
+   (`"9" = "expire"`). A `TIMER` frame carries no application payload, so
+   `[tags]` can never reach it: without this entry every timer divergence is
+   permanently `Unexplained`. Skip it only if the app schedules no timers.
+4. `[touched] arms = [...]`: exactly the arms the change may move.
    `migration = true` only if `IMAGE_VERSION` changed.
-4. One `[[expect]]` per `(surface, arm)` pair, with a `note` in the
+5. One `[[expect]]` per `(surface, arm)` pair, with a `note` in the
    developer's words. `projection_origin` / `projection_end` take no `arm`. An
    `[[expect]]` without `arm` on another surface is a wildcard over every arm.
    A second entry on the same pair reads `Absent`.
+6. Check the file parses before handing it over — `upgrade` is the only mode
+   that reads a declaration, so run it with the SAME binary on both sides:
+   ```bash
+   .uc/cargo/bin/uc2-diffreplay upgrade --corpus upgrade/corpus \
+     --old upgrade/old/*-service --new upgrade/old/*-service \
+     --declare upgrade/intent.toml --report target/scratch/parse.json
+   ```
+   A malformed declaration is refused by name. One binary means an empty
+   profile, so every `[[expect]]` reads `Absent`: this checks the **file**, not
+   the change.
 
 ## 2. Classify the change
 
@@ -68,7 +84,9 @@ Read `upgrade/report.json`:
 ```bash
 jq -r '.findings[] | "\(.verdict) \(.surface) arm=\(.arm) pos=\(.pos) \(.note)"' upgrade/report.json
 ```
-- **Unexplained, `no touched arm explains this`**: if the tag maps to no arm,
+- **Unexplained, `no touched arm explains this`**: on the `sched` surface
+  from a `TIMER` frame, the timer id is missing from `[timers]` (a timer has
+  no tag, so `[tags]` is not the fix). Otherwise, if the tag maps to no arm,
   `[tags]`/`tag_offset` is wrong — fix and re-run. If it maps to an arm not in
   `[touched]`, a command the change never claimed to touch moved: a shared
   helper, a field it reads, or a bug. Name the hunk (`git diff -- src/`) or

@@ -1,6 +1,3 @@
-//! LITERAL-CHECK {{not_a_placeholder}} — this line proves the generator copies
-//! Rust sources verbatim (template-tests/generator.sh). Leave it.
-//!
 //! Module map:
 //! - `identity`  — FSM name/version, app id, ports (generated)
 //! - `commands`  — the wire contract: Command / Response / Query / QueryResponse

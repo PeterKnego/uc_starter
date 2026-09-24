@@ -9,10 +9,18 @@ command on the log like any other.
 
 ```rust
 Command::PutWithTtl { key, value, ttl_ms } => {
-    let id = self.next_timer_id();                 // your own counter, kept in State
-    self.expiries.insert(id, key.clone());         // the timer carries no payload
-    ctx.schedule(id, ctx.time_ns + ttl_ms * 1_000_000);
-    // …
+    // ttl_ms comes from a client, so the deadline is checked arithmetic: an
+    // overflow is an error RESPONSE, never a panic (and never an early
+    // `return` that would skip `self.last_applied` after the match).
+    match ttl_ms.checked_mul(1_000_000).and_then(|d| ctx.time_ns.checked_add(d)) {
+        None => Response::Refused { reason: "ttl too large".into() },
+        Some(at_ns) => {
+            let id = self.next_timer_id();         // your own counter, kept in State
+            self.expiries.insert(id, key.clone()); // the timer carries no payload
+            ctx.schedule(id, at_ns);
+            // …
+        }
+    }
 }
 ```
 
