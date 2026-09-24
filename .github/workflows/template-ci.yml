@@ -22,6 +22,7 @@ jobs:
       - run: rustup toolchain install 1.89.0 --profile minimal --component clippy
       - run: bash template-tests/generator.sh
       - run: bash template-tests/lint-determinism.sh
+      - run: bash template-tests/tree-hash.sh
       - run: bash template-tests/hook.sh
       - run: bash template-tests/uc-upgrade.sh
       - name: generate + full project CI
@@ -29,7 +30,10 @@ jobs:
           D="$HOME/scratch/uc_starter-gen/ci"; rm -rf "$D"; template-tests/gen.sh "$D"
           cd "$D/demo-app"
           if [ "${{ github.event_name }}" = schedule ]; then
-            latest="$(curl -fsA 'uc_starter-ci' https://index.crates.io/uc/_s/uc_service | tail -1 | sed -n 's/.*"vers":"\([^"]*\)".*/\1/p')"
+            # Only a non-yanked line: the sparse index keeps yanked releases,
+            # and jq's per-line streaming means the last matching line is the
+            # newest non-yanked version (index order is release order).
+            latest="$(curl -fsA 'uc_starter-ci' https://index.crates.io/uc/_s/uc_service | jq -r 'select(.yanked==false) | .vers' | tail -1)"
             scripts/uc-upgrade.sh "$latest"
           fi
           make bins lint test test-cluster
