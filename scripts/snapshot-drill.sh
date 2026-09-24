@@ -4,6 +4,9 @@
 # shellcheck source=scripts/lib.sh
 . "$(dirname "$0")/lib.sh"
 C="$PROJECT_DIR/scripts/cluster.sh"; CLI="$(app_bin_dir)/$APP_NAME"; GW="$(gateways_csv)"
+# The write and the read are YOUR app's: scripts/probe.sh (Step 8).
+# shellcheck source=scripts/probe.sh
+. "$PROJECT_DIR/scripts/probe.sh"
 [ -x "$CLI" ] || die "$CLI missing — run make build"
 l="$("$C" leader)" || die "no serving leader — run make up"
 
@@ -13,8 +16,8 @@ row_line() { "$C" ctl "$1" status 2>/dev/null | grep -E '^ *row=0 '; }
 field() { sed -nE "s/.* $1=([^ ]*).*/\1/p"; }
 set_at() { "$C" snapshot-show "$1" 2>/dev/null | sed -n 's/^set=//p'; }
 
-val="drill-$(date +%s)"
-"$CLI" --gateways "$GW" put drill-key "$val" >/dev/null || die "write failed"
+tok="snap-$(date +%s)-$$"
+probe_write "$CLI" "$tok" || die "probe_write failed (scripts/probe.sh) — does make demo pass?"
 P="$("$C" snapshot | sed -n 's/^instant=//p')"; [ -n "$P" ] || die "uc2ctl snapshot gave no instant"
 echo "1. coordinated snapshot instant P=$P (every node freezes its state at log position $P)"
 for n in 0 1 2; do
@@ -43,8 +46,8 @@ for _ in $(seq 1 150); do
   sleep 0.2
 done
 [ $ok = 1 ] || die "service $victim did not re-attach and catch up within 30s: $(row_line "$victim")"
-got="$("$CLI" --gateways "$GW" get drill-key --linearizable)"
-[ "$got" = "value=\"$val\"" ] || die "read back '$got', want value=\"$val\""
+got="$(probe_read "$CLI" "$tok")"; want="$(probe_expect "$tok")"
+[ "$got" = "$want" ] || die "read back '$got', want '$want' (scripts/probe.sh)"
 # The SDK logs "installed snap-<P>" only when it had to install the snapshot
 # (the journal no longer reaches back far enough); otherwise it replayed the
 # journal, silently.

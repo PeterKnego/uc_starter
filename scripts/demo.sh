@@ -18,6 +18,16 @@ expect "put greeting hello"      'ok previous='       put greeting hello
 expect "get greeting"            'value="hello"'      get greeting --linearizable
 expect "delete greeting"         'ok removed="hello"' delete greeting
 expect "get greeting (deleted)"  'value=none'         get greeting --linearizable
+# The Part-2 drills' write and read (scripts/probe.sh) must work too: Steps 10
+# and 12 depend on them, so the demo proves them here.
+# shellcheck source=scripts/probe.sh
+. "$PROJECT_DIR/scripts/probe.sh"
+tok="demo-$(date +%s)-$$"
+if probe_write "$CLI" "$tok" && got="$(probe_read "$CLI" "$tok")" && [ "$got" = "$(probe_expect "$tok")" ]; then
+  printf '   %-28s -> %s\n' "probe (scripts/probe.sh)" "$got"
+else
+  printf '   %-28s -> FAILED: read %s, want %s\n' "probe (scripts/probe.sh)" "${got:-nothing}" "$(probe_expect "$tok")"; fails=$((fails+1))
+fi
 [ $fails -eq 0 ] || { echo "FAIL ($fails)"; exit 1; }
 "$PROJECT_DIR/scripts/stamp.sh" demo
 [ "$(stamp_state skeleton any)" = fresh ] || "$PROJECT_DIR/scripts/stamp.sh" skeleton

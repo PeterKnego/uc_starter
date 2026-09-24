@@ -11,7 +11,8 @@
 #   scripts/cluster.sh leader              print the serving leader's id
 #   scripts/cluster.sh wait-leader [secs]  wait for (and print) a serving leader
 #   scripts/cluster.sh stop|kill|start <node|service|gateway> N
-#   scripts/cluster.sh restart-services    restart every service (after a rebuild)
+#   scripts/cluster.sh restart-services    restart every service (after a rebuild; refuses
+#                                          an FSM_VERSION change the row is not pinned to, FORCE=1 overrides)
 #   scripts/cluster.sh snapshot            uc2ctl snapshot against the leader (prints instant=<P>)
 #   scripts/cluster.sh snapshot-show N     uc2ctl snapshot show on node N
 #   scripts/cluster.sh ctl N <args...>     uc2ctl <args> against node N
@@ -176,6 +177,7 @@ cmd_up() {
     say "   node $l is the serving leader"
     say "2. services"
     for i in 0 1 2; do start_service "$i"; done
+    stale_service_warning
     say "3. gateways"
     for i in 0 1 2; do start_gateway "$i"; done
     local deadline=$(( $(date +%s) + 30 ))
@@ -187,6 +189,43 @@ cmd_up() {
     done
     say "   gateways: $(gateways_csv)"
     say "up. try: make demo"
+}
+
+# A service that was already running when `up` was called keeps running
+# whatever build it started with — possibly one cargo has since replaced.
+stale_service_warning() {
+    local i pid exe
+    for i in 0 1 2; do
+        alive service "$i" || continue
+        pid="$(cat "$(pidfile service "$i")")"
+        exe="$(readlink "/proc/$pid/exe" 2>/dev/null)" || continue
+        if [[ "$exe" == *" (deleted)" ]] || ! cmp -s "/proc/$pid/exe" "$SERVICE_BIN"; then
+            say "   WARNING: service$i (pid $pid) runs an older build than $SERVICE_BIN."
+            say "            Same FSM_VERSION: make restart-services. A bumped FSM_VERSION: the Step 12 flow (make upgrade-drill), never a restart."
+        fi
+    done
+}
+
+# restart-services swaps the build under a running row one service at a
+# time. That is only safe when the new build is the version the row runs, or
+# the version it is pinned to (an upgrade in flight). Anything else is a
+# rolling FSM upgrade with no pin: the new build replays the old log under
+# new code, and a mixed row can fail-stop on a command the other side wrote.
+cmd_restart_services() {
+    need_bins
+    local src run pinned i line p
+    src="$(source_version)"; run=""; pinned=""
+    for i in 0 1 2; do
+        line="$(ctl "$i" status 2>/dev/null | grep -E '^ *row=0 ' || true)"
+        [ -n "$line" ] || continue
+        [ -n "$run" ] || run="$(sed -nE 's/.* version=([0-9]+\.[0-9]+\.[0-9]+) .*/\1/p' <<<"$line")"
+        p="$(sed -nE 's/.* pinned=([^ ]*).*/\1/p' <<<"$line")"
+        [ "$p" = "$src" ] && pinned="$p"
+    done
+    if [ -n "$src" ] && [ -n "$run" ] && [ "$src" != "$run" ] && [ -z "$pinned" ] && [ "${FORCE:-0}" != 1 ]; then
+        die "refusing: src/identity.rs says FSM_VERSION $src but row 0 runs $run and is not pinned to $src. Restarting services now would swap the FSM version under a live row with no pin — use the Step 12 flow (make upgrade-drill), or on this disposable cluster make up FRESH=1. Override (you know why): FORCE=1 make restart-services"
+    fi
+    for i in 0 1 2; do stop_one service "$i"; start_service "$i"; done
 }
 
 cmd_down() {
@@ -234,7 +273,7 @@ case "${1:-}" in
         [ $# -eq 3 ] || usage
         need_bins
         case "$2" in node) start_node "$3" ;; service) start_service "$3" ;; gateway) start_gateway "$3" ;; *) die "start what? node|service|gateway" ;; esac ;;
-    restart-services) need_bins; for i in 0 1 2; do stop_one service "$i"; start_service "$i"; done ;;
+    restart-services) cmd_restart_services ;;
     snapshot) l=$(leader) || die "no serving leader — run make up"; ctl "$l" snapshot --admin-key "$ROOT/admin.key" ;;
     snapshot-show) [ $# -eq 2 ] || usage; ctl "$2" snapshot show ;;
     ctl) [ $# -ge 3 ] || usage; shift; cmd_ctl "$@" ;;

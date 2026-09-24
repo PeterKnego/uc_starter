@@ -35,7 +35,9 @@ tree_hash() { # paths… → 16 hex chars over file names + contents
   done | LC_ALL=C sort -z | xargs -0 sha256sum 2>/dev/null | sha256sum | cut -c1-16
 }
 code_hash()            { tree_hash src Cargo.toml Cargo.lock; }
-upgrade_hash()         { tree_hash src Cargo.toml Cargo.lock upgrade/intent.toml; }
+# What an upgrade-check PASS vouches for: the code, the declaration, the
+# corpus it replayed and the old binaries it replayed it through.
+upgrade_hash()         { tree_hash src Cargo.toml Cargo.lock upgrade/intent.toml upgrade/corpus upgrade/old; }
 code_hash_with_tests() { tree_hash src tests Cargo.toml Cargo.lock; }
 STATE_DIR="$PROJECT_DIR/.uc/state"
 write_stamp() { [ "${UC_NO_STAMP:-0}" = 1 ] && return 0; mkdir -p "$STATE_DIR"; echo "$2" >"$STATE_DIR/$1.ok"; }

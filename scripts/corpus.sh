@@ -19,8 +19,16 @@ pidf="$ROOT/pids/service0.pid"
 spid="$(cat "$pidf" 2>/dev/null)"
 { [ -n "$spid" ] && kill -0 "$spid" 2>/dev/null; } || die "service 0 is not running — the old binary is taken from the running service (make up)"
 case "$(readlink "/proc/$spid/exe")" in */"$APP_NAME-service"*) ;; *) die "pid $spid ($pidf) is not $APP_NAME-service" ;; esac
-mkdir -p "$STATE_DIR"; OLD_TMP="$STATE_DIR/old-service.tmp"
+mkdir -p "$STATE_DIR"; OLD_TMP="$STATE_DIR/old-service.tmp"; OLD_CLI_TMP="$STATE_DIR/old-client.tmp"
 cp "/proc/$spid/exe" "$OLD_TMP" || die "cannot copy the running service binary from /proc/$spid/exe"
+# The OLD client (the upgrade drill writes its canary with it, before the pin:
+# a new client must never talk to old services) is not a running process, so
+# it is taken from the build on disk — and only when that build IS the one the
+# cluster runs: the service binary cargo built beside it must be byte-identical
+# to the running one. Never a rebuild.
+cmp -s "/proc/$spid/exe" "$(app_bin_dir)/$APP_NAME-service" \
+  || die "the service binary on disk ($(app_bin_dir)/$APP_NAME-service) is not the one the cluster runs — the code was rebuilt since the services started, so the client beside it is not the old client either. Check out the code the cluster runs, make restart-services, then make corpus"
+cp "$(app_bin_dir)/$APP_NAME" "$OLD_CLI_TMP" || die "cannot copy the client binary $(app_bin_dir)/$APP_NAME — run make build"
 "$C" leader >/dev/null || die "no serving leader — run make up"
 # The old side must be the build the cluster runs. A source version that
 # differs from the running one means the code was already bumped.
@@ -37,12 +45,18 @@ echo "1. instant P=$P, complete on node 0"
 traffic
 # Export once node 0 has made the traffic durable, so the span ends after it.
 commit="$("$C" ctl "$("$C" leader)" status | sed -nE 's/^log: commit=([0-9]+).*/\1/p')"
-d=0; for _ in $(seq 1 150); do d="$("$C" ctl 0 status | sed -nE 's/^log: .*durable=([0-9]+).*/\1/p')"; [ "${d:-0}" -ge "${commit:-0}" ] && break; sleep 0.2; done
-[ "${d:-0}" -ge "${commit:-1}" ] || die "node 0 did not reach commit $commit (durable=$d)"
+[ -n "$commit" ] || die "cannot read the leader's commit position (uc2ctl status gave no 'log: commit=' line) — is the cluster up? make status"
+d=0; for _ in $(seq 1 150); do d="$("$C" ctl 0 status | sed -nE 's/^log: .*durable=([0-9]+).*/\1/p')"; [ "${d:-0}" -ge "$commit" ] && break; sleep 0.2; done
+[ "${d:-0}" -ge "$commit" ] || die "node 0 did not reach commit $commit (durable=$d)"
 echo "2. ran scripts/demo.sh above P; node 0 durable to $d"
 rm -rf upgrade/corpus upgrade/old; mkdir -p upgrade/old
 "$DR" corpus export --instance-dir "$ROOT/n0" --app-id "$APP_ID" --row 0 --from "$P" --out upgrade/corpus || die "corpus export failed"
 mv "$OLD_TMP" "upgrade/old/$APP_NAME-service"
-[ -f upgrade/intent.toml ] || cp upgrade/intent.toml.example upgrade/intent.toml
-echo "3. corpus at upgrade/corpus (from P=$P); old service binary (the one service 0 runs, pid $spid) at upgrade/old/"
+mv "$OLD_CLI_TMP" "upgrade/old/$APP_NAME"
+if [ -f upgrade/intent.toml ]; then
+  intent="upgrade/intent.toml kept (it already existed)"
+else
+  cp upgrade/intent.toml.example upgrade/intent.toml; intent="upgrade/intent.toml copied from the example"
+fi
+echo "3. corpus at upgrade/corpus (from P=$P); the old service (the one service 0 runs, pid $spid) and the old client at upgrade/old/; $intent"
 echo "next: change the code, bump FSM_VERSION in src/identity.rs, declare the change in upgrade/intent.toml, run make upgrade-check"
