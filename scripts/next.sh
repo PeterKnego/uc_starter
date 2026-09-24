@@ -5,6 +5,10 @@
 #   scripts/next.sh --list   step ids in order
 # shellcheck source=scripts/lib.sh
 . "$(dirname "$0")/lib.sh"
+# The very first thing, before any array is touched: a friendly refusal beats
+# an old-bash (macOS's stock /bin/bash 3.2) crash reaching an empty-array
+# expansion further down and losing this message entirely.
+require_linux
 STEPS=(
   "env|1|Environment"
   "skeleton|1|Run the skeleton"
@@ -64,41 +68,64 @@ check_deploy()   {
 }
 
 json_str() { local s="${1//\\/\\\\}"; s="${s//\"/\\\"}"; printf '"%s"' "$s"; }
-emit() { # n part id title status part1
+emit() { # n part id title status part1_complete part1_just_completed
   if [ $JSON = 1 ]; then
-    printf '{"step":%s,"of":13,"part":%s,"id":"%s","title":%s,"status":"%s","part1_complete":%s,"detail":[' "$1" "$2" "$3" "$(json_str "$4")" "$5" "$6"
-    local first=1 d; for d in "${DETAIL[@]}"; do [ $first = 1 ] || printf ','; json_str "$d"; first=0; done; printf ']}\n'
+    printf '{"step":%s,"of":13,"part":%s,"id":"%s","title":%s,"status":"%s","part1_complete":%s,"part1_just_completed":%s,"detail":[' \
+      "$1" "$2" "$3" "$(json_str "$4")" "$5" "$6" "$7"
+    local first=1 d; for d in ${DETAIL[@]+"${DETAIL[@]}"}; do [ $first = 1 ] || printf ','; json_str "$d"; first=0; done; printf ']}\n'
   else
     [ "$5" = complete ] && { echo "All steps complete."; return; }
+    [ "$7" = true ] && echo "Part 1 complete — your app runs on a three-node cluster."
     echo "Step $1/13 · Part $2 · $4 → WHAT-NEXT.md \"Step $1\""
     echo "  status: $5"
-    local d; for d in "${DETAIL[@]}"; do echo "  - $d"; done
+    local d; for d in ${DETAIL[@]+"${DETAIL[@]}"}; do echo "  - $d"; done
   fi
 }
 
-part1_done=0; progress_has part1 && part1_done=1
+# Part 1's completion is a MACHINE-LOCAL fact (a stamp, like every other proof
+# this script can't see from files alone) — never recorded in the committed
+# .uc-progress, so a fresh clone with no local stamps re-walks it for real
+# instead of trusting another machine's history.
+part1_done=0; [ "$(stamp_state part1 any)" = fresh ] && part1_done=1
 notes=()
 n=0
 for s in "${STEPS[@]}"; do
   n=$((n+1)); IFS='|' read -r id part title <<<"$s"
   progress_skipped "$id" && continue
-  if [ "$part" = 1 ] && [ $part1_done = 1 ]; then
-    # Part 1 is history once completed: report staleness as a note only.
-    DETAIL=(); "check_$id" >/dev/null; [ $? = 2 ] && notes+=("note: Step $n ($title) is stale — ${DETAIL[*]}")
+  if [ "$id" != env ] && [ "$part" = 1 ] && [ $part1_done = 1 ]; then
+    # Part 1 is history once completed — but only re-check the steps that can
+    # actually go STALE (tests/client/failover carry a real content hash via
+    # stamp_check). skeleton/concepts/design/commands/state can only ever
+    # report missing/fresh, never stale, so they'd never produce a note here;
+    # skipping them also keeps `cargo check`/`cargo test` off this hot poll
+    # path entirely.
+    case "$id" in
+      tests|client|failover)
+        DETAIL=(); "check_$id" >/dev/null
+        [ $? = 2 ] && notes+=("note: Step $n ($title) is stale — ${DETAIL[*]}")
+        ;;
+    esac
     continue
   fi
   DETAIL=(); "check_$id"; rc=$?
   if [ $rc != 0 ]; then
     status=todo; [ $rc = 2 ] && status=stale
-    if [ "$part" = 2 ] && [ $part1_done = 0 ]; then
-      echo "done part1 $(date +%F)" >> "$PROGRESS"; part1_done=1
-      [ $JSON = 0 ] && echo "Part 1 complete — your app runs on a three-node cluster."
+    # part1_just_completed is DERIVED every call, not a one-shot flag: true
+    # whenever the reported step is the first non-skipped Part-2 step and its
+    # own proof hasn't started yet (stamp missing, not stale — stale means
+    # some work on it already happened). That makes the banner reproducible
+    # on every call that lands here, JSON or human, in any order.
+    part1_just_completed=false
+    if [ "$part" = 2 ]; then
+      [ $part1_done = 1 ] || write_stamp part1 any
+      part1_done=1
+      [ $rc = 1 ] && part1_just_completed=true
     fi
-    DETAIL+=("${notes[@]}")
-    emit "$n" "$part" "$id" "$title" "$status" "$([ $part1_done = 1 ] && echo true || echo false)"
+    DETAIL+=(${notes[@]+"${notes[@]}"})
+    emit "$n" "$part" "$id" "$title" "$status" "$([ $part1_done = 1 ] && echo true || echo false)" "$part1_just_completed"
     exit 0
   fi
 done
-DETAIL=("${notes[@]}")
+DETAIL=(${notes[@]+"${notes[@]}"})
 # shellcheck disable=SC1010  # "done" here is the emit() id argument, not the loop keyword
-emit 13 2 done "All steps complete" complete true
+emit 13 2 done "All steps complete" complete true false
