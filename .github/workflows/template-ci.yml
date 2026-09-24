@@ -1,0 +1,56 @@
+name: template-ci
+on:
+  push:
+  pull_request:
+  schedule: [{ cron: "0 6 * * 1" }]   # weekly: against the latest crates.io UC
+  workflow_dispatch:
+permissions: { contents: read, issues: write }
+jobs:
+  template:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@v2
+        with: { tool: cargo-generate }
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml') }}
+          restore-keys: ${{ runner.os }}-cargo-
+      - run: rustup toolchain install 1.89.0 --profile minimal --component clippy
+      - run: bash template-tests/generator.sh
+      - run: bash template-tests/lint-determinism.sh
+      - run: bash template-tests/hook.sh
+      - run: bash template-tests/uc-upgrade.sh
+      - name: generate + full project CI
+        run: |
+          D="$HOME/scratch/uc_starter-gen/ci"; rm -rf "$D"; template-tests/gen.sh "$D"
+          cd "$D/demo-app"
+          if [ "${{ github.event_name }}" = schedule ]; then
+            latest="$(curl -fsA 'uc_starter-ci' https://index.crates.io/uc/_s/uc_service | tail -1 | sed -n 's/.*"vers":"\([^"]*\)".*/\1/p')"
+            scripts/uc-upgrade.sh "$latest"
+          fi
+          make bins lint test test-cluster
+      - run: bash template-tests/tutor.sh
+      - if: failure() && github.event_name == 'schedule'
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: gh issue create --title "template-ci weekly: starter broken against latest ultima_cluster" --body "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+  devcontainer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@v2
+        with: { tool: cargo-generate }
+      # devcontainers/ci resolves `subFolder` inside its own checkout of this
+      # repo, so the generated project must live under $GITHUB_WORKSPACE, not
+      # $HOME/scratch (that's fine everywhere else in this file — only this
+      # job needs the generated project's own .devcontainer exercised).
+      - run: |
+          D="$GITHUB_WORKSPACE/gen"; rm -rf "$D"; template-tests/gen.sh "$D"
+          echo "P=gen/demo-app" >> "$GITHUB_ENV"
+      - uses: devcontainers/ci@v0.3
+        with:
+          subFolder: ${{ env.P }}
+          runCmd: make bins test-cluster

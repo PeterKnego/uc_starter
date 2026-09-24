@@ -31,8 +31,9 @@ new tag) and the matching section of UC's *How to upgrade a cluster*
 - whether the wire protocol or the control page (`cnc`) version changed. If
   either did, it is a flag day.
 - any change to the snapshot artifact envelope. When it changes, each node's
-  `snapshots/<row>/` must be cleared once during the upgrade (2.13.0 was such
-  a release: `ULTSNAP1` artifacts are refused by name).
+  `snapshots/<row>/` must be cleared once during the upgrade — the release
+  notes name the old envelope tag, and an artifact carrying it is refused by
+  name rather than guessed at.
 - new required `node.toml` or `gateway.toml` keys, and keys that are now
   refused by name. `scripts/lib.sh` (`render_node_toml`,
   `render_gateway_toml`) is where this project writes both files.

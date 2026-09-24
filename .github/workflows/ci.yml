@@ -1,0 +1,25 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - run: rustup toolchain install 1.89.0 --profile minimal --component clippy
+      - run: make lint test
+  cluster:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - run: make bins test-cluster
+      - if: failure()
+        run: tail -n 50 ~/.uc-starter/*/logs/*.log target/tmp/cluster-test/logs/*.log || true
+  devcontainer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: devcontainers/ci@v0.3
+        with:
+          runCmd: make bins test-cluster

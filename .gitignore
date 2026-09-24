@@ -5,3 +5,7 @@
 /upgrade/old/
 /upgrade/report.json
 /.claude/settings.local.json
+# template-ci.yml's devcontainer job generates a project here (devcontainers/ci
+# needs it inside the checkout); harmless if this file is ever copied into a
+# generated project too, since that project never writes to /gen.
+/gen/

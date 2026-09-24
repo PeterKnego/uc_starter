@@ -65,8 +65,8 @@ and applies the same commands in the same order. Three `uc2-gateway`s give
 clients that cannot use shared memory a TCP front door. With one gateway per
 node, a gateway on a follower can redirect a client to the leader. The tenth
 process is the client, which `make demo` runs once per request. The start order
-is fixed: all nodes, then a serving leader, then services, then gateways. Since
-2.13.0 a service can attach only after its node has *joined* the cluster: it
+is fixed: all nodes, then a serving leader, then services, then gateways. A
+service can attach only after its node has *joined* the cluster: it
 knows a leader, has learned the commit position, and has applied the cluster's
 own records up to it. Until then the attach is refused `NodeBooting` and waits
 up to 10 s. See

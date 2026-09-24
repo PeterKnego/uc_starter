@@ -60,3 +60,5 @@ upgrade-drill: ## the pinned upgrade on the local cluster (asks first: one-way d
 	scripts/upgrade-drill.sh $(if $(RESUME),--resume)
 package: ## deploy bundle: make package HOSTS=ip0,ip1,ip2
 	HOSTS=$(HOSTS) scripts/package.sh
+uc-upgrade: ## move to another UC release: make uc-upgrade VERSION=x
+	scripts/uc-upgrade.sh $(VERSION)

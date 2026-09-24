@@ -16,7 +16,7 @@ with:
 Error: the node has not joined its cluster yet (FSM names published, declared set not yet) — it is booting; retry the attach
 ```
 
-**Cause.** Since UC 2.13.0 a service may attach only after its node has
+**Cause.** A service may attach only after its node has
 *joined*: it knows a leader, has learned the commit position, and has applied
 the cluster's own records up to it. The service waits up to 10 s, then gives
 up. Usually the service was started before the nodes, or too few nodes are
