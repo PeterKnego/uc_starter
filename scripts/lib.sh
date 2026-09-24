@@ -24,9 +24,15 @@ die() { printf '%s: %s\n' "$(basename "$0")" "$*" >&2; exit 3; }
 require_linux() {
   [ "$(uname -s)" = Linux ] || die "ultima_cluster nodes run on Linux only (this is $(uname -s)). Open this project in its devcontainer — see README.md § Devcontainer."
 }
+# Byte order (LC_ALL=C), so a stamp written in a UTF-8 terminal reads fresh
+# from a POSIX-locale shell; editor droppings (vim .*.sw?, emacs *~ and .#*)
+# are not code; a missing path (no Cargo.lock yet) is skipped, not an error.
 tree_hash() { # paths… → 16 hex chars over file names + contents
-  local p; for p in "$@"; do [ -e "$p" ] && find "$p" -type f -not -path '*/target/*' -print0; done \
-    | sort -z | xargs -0 sha256sum 2>/dev/null | sha256sum | cut -c1-16
+  local p; for p in "$@"; do
+    if [ -e "$p" ]; then
+      find "$p" -type f -not -path '*/target/*' -not -name '.*.sw?' -not -name '*~' -not -name '.#*' -print0
+    fi
+  done | LC_ALL=C sort -z | xargs -0 sha256sum 2>/dev/null | sha256sum | cut -c1-16
 }
 code_hash()            { tree_hash src Cargo.toml Cargo.lock; }
 code_hash_with_tests() { tree_hash src tests Cargo.toml Cargo.lock; }
