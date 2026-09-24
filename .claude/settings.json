@@ -17,12 +17,10 @@
       "Bash(git log:*)"
     ],
     "ask": [
-      "Bash(make upgrade-drill:*)",
-      "Bash(scripts/upgrade-drill.sh:*)",
-      "Bash(.uc/bin/uc2ctl:*)",
-      "Bash(UC_CONFIRM_PIN=yes:*)",
-      "Bash(*UC_CONFIRM_PIN=yes*)",
-      "Bash(*upgrade pin*)"
+      "Bash(*upgrade-drill*)",
+      "Bash(*UC_CONFIRM_PIN*)",
+      "Bash(*upgrade pin*)",
+      "Bash(.uc/bin/uc2ctl:*)"
     ]
   },
   "hooks": {

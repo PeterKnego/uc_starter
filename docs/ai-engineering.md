@@ -63,10 +63,12 @@ instead of surfacing later in `make lint`.
 (`make` targets, `cargo build/check/test/clippy/fmt`, `scripts/next.sh`,
 `scripts/lint-determinism.sh`, cluster status, leader and root, and
 `git status/diff/log`). Anything that can pin an upgrade **always asks you**:
-`make upgrade-drill`, `scripts/upgrade-drill.sh`, any direct `.uc/bin/uc2ctl`
-call, any command carrying `UC_CONFIRM_PIN=yes`, and any command containing
-`upgrade pin`. Claude Code checks `ask` rules before `allow` rules, so the
-blanket `make` allowance does not cover `make upgrade-drill`. The scripts guard the pin as well: `make
+any command that mentions `upgrade-drill`, `UC_CONFIRM_PIN` or
+`upgrade pin`, or runs `.uc/bin/uc2ctl`, asks, even in auto mode. The rules
+match the text anywhere in the command (`Bash(*upgrade-drill*)`,
+`Bash(*UC_CONFIRM_PIN*)`, `Bash(*upgrade pin*)`), so reordered or quoted
+`make` arguments cannot slip past them, and Claude Code checks `ask` rules
+before `allow` rules, so the blanket `make` allowance never covers them. The scripts guard the pin as well: `make
 upgrade-drill` asks you to type `PIN`, and `scripts/cluster.sh ctl … upgrade
 pin` refuses without `UC_CONFIRM_PIN=yes`. A pin is a one-way door: there is
 no unpin, and the only rollback is the backup taken before it.
