@@ -36,7 +36,8 @@ jobs:
       - run: bash template-tests/tutor.sh
       - if: failure() && github.event_name == 'schedule'
         env: { GH_TOKEN: "${{ github.token }}" }
-        run: gh issue create --title "template-ci weekly: starter broken against latest ultima_cluster" --body "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        run: |
+          gh issue create --title "template-ci weekly: starter broken against latest ultima_cluster" --body "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
   devcontainer:
     runs-on: ubuntu-latest
     steps:
