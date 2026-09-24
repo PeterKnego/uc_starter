@@ -19,6 +19,7 @@ grep -q 'LITERAL-CHECK {{not_a_placeholder}}' "$P/src/lib.rs" || fail "src/lib.r
 [ ! -e "$P/hooks" ] || fail "hooks leaked into the project"
 [ ! -e "$P/cargo-generate.toml" ] || fail "cargo-generate.toml leaked"
 (cd "$P" && cargo metadata --format-version 1 --no-deps >/dev/null) || fail "generated Cargo.toml does not parse"
+[ ! -e "$P/LICENSE" ] || fail "a LICENSE was generated — the license is the developer's choice"
 
 for bad in uc_mine 9lives Upper; do
   if "$HERE/gen.sh" "$OUT/bad-$bad" bad-app "$bad" x 7000 >/dev/null 2>&1; then fail "fsm_name $bad accepted"; fi
