@@ -1,7 +1,15 @@
+# This file ships into every generated project (cargo-generate.toml does not
+# ignore it). It also lives here, in the uc_starter TEMPLATE repo itself,
+# where `Cargo.toml` still carries the unprocessed `{{project-name}}`
+# placeholder — a real crate name never exists here, so every job below
+# no-ops on this one repository rather than failing on every push forever.
+# A generated project's `github.repository` is never this one, so there the
+# guard is always true and the jobs run normally.
 name: ci
 on: [push, pull_request]
 jobs:
   lint-test:
+    if: github.repository != 'PeterKnego/uc_starter'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -9,6 +17,7 @@ jobs:
       - run: rustup toolchain install 1.89.0 --profile minimal --component clippy
       - run: make lint test
   cluster:
+    if: github.repository != 'PeterKnego/uc_starter'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,6 +26,7 @@ jobs:
       - if: failure()
         run: tail -n 50 ~/.uc-starter/*/logs/*.log target/tmp/cluster-test/logs/*.log || true
   devcontainer:
+    if: github.repository != 'PeterKnego/uc_starter'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
