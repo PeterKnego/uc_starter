@@ -6,7 +6,10 @@ fn ctx(p: u64) -> ApplyCtx {
 }
 
 fn put(k: &str, v: &str) -> Command {
-    Command::Put { key: k.into(), value: v.into() }
+    Command::Put {
+        key: k.into(),
+        value: v.into(),
+    }
 }
 
 #[test]
@@ -14,7 +17,10 @@ fn put_then_get() {
     let mut sm = Fsm::default();
     let r = sm.apply(&mut ctx(32), put("a", "1"));
     assert_eq!(r, Response::Put { previous: None });
-    assert_eq!(sm.query(Query::Get { key: "a".into() }), QueryResponse::Value(Some("1".into())));
+    assert_eq!(
+        sm.query(Query::Get { key: "a".into() }),
+        QueryResponse::Value(Some("1".into()))
+    );
 }
 
 #[test]
@@ -22,16 +28,32 @@ fn put_overwrites_and_returns_previous() {
     let mut sm = Fsm::default();
     sm.apply(&mut ctx(32), put("a", "1"));
     let r = sm.apply(&mut ctx(64), put("a", "2"));
-    assert_eq!(r, Response::Put { previous: Some("1".into()) });
+    assert_eq!(
+        r,
+        Response::Put {
+            previous: Some("1".into())
+        }
+    );
 }
 
 #[test]
 fn delete_returns_removed() {
     let mut sm = Fsm::default();
     sm.apply(&mut ctx(32), put("a", "1"));
-    assert_eq!(sm.apply(&mut ctx(64), Command::Delete { key: "a".into() }), Response::Delete { removed: Some("1".into()) });
-    assert_eq!(sm.apply(&mut ctx(96), Command::Delete { key: "a".into() }), Response::Delete { removed: None });
-    assert_eq!(sm.query(Query::Get { key: "a".into() }), QueryResponse::Value(None));
+    assert_eq!(
+        sm.apply(&mut ctx(64), Command::Delete { key: "a".into() }),
+        Response::Delete {
+            removed: Some("1".into())
+        }
+    );
+    assert_eq!(
+        sm.apply(&mut ctx(96), Command::Delete { key: "a".into() }),
+        Response::Delete { removed: None }
+    );
+    assert_eq!(
+        sm.query(Query::Get { key: "a".into() }),
+        QueryResponse::Value(None)
+    );
 }
 
 #[test]
@@ -52,7 +74,10 @@ fn validate_refuses_oversize() {
     assert!(put("k", "v").validate().is_ok());
     // The largest valid command still fits the 1312 B crypto-on ceiling with
     // the 16 B session envelope in front of it.
-    let max = put(&"k".repeat(app::MAX_KEY_LEN), &"v".repeat(app::MAX_VALUE_LEN));
+    let max = put(
+        &"k".repeat(app::MAX_KEY_LEN),
+        &"v".repeat(app::MAX_VALUE_LEN),
+    );
     assert!(app::encode(&max).len() + 16 <= 1312);
 }
 

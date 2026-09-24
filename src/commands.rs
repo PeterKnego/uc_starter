@@ -54,12 +54,18 @@ impl Command {
             Command::Delete { key } => (key, None),
         };
         if key.len() > MAX_KEY_LEN {
-            return Err(CommandError(format!("key is {} bytes; the limit is {MAX_KEY_LEN}", key.len())));
+            return Err(CommandError(format!(
+                "key is {} bytes; the limit is {MAX_KEY_LEN}",
+                key.len()
+            )));
         }
         if let Some(v) = value
             && v.len() > MAX_VALUE_LEN
         {
-            return Err(CommandError(format!("value is {} bytes; the limit is {MAX_VALUE_LEN}", v.len())));
+            return Err(CommandError(format!(
+                "value is {} bytes; the limit is {MAX_VALUE_LEN}",
+                v.len()
+            )));
         }
         Ok(())
     }

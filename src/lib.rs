@@ -14,5 +14,8 @@ pub mod identity;
 pub mod snapshot;
 pub mod state;
 
-pub use commands::{decode, encode, Command, CommandError, Query, QueryResponse, Response, MAX_KEY_LEN, MAX_VALUE_LEN};
+pub use commands::{
+    Command, CommandError, MAX_KEY_LEN, MAX_VALUE_LEN, Query, QueryResponse, Response, decode,
+    encode,
+};
 pub use state::{Fsm, State};

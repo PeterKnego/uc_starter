@@ -45,8 +45,12 @@ impl StateMachine for Fsm {
     fn apply(&mut self, ctx: &mut ApplyCtx, cmd: Command) -> Response {
         // TODO(app): one match arm per command in src/commands.rs.
         let out = match cmd {
-            Command::Put { key, value } => Response::Put { previous: self.state.entries.insert(key, value) },
-            Command::Delete { key } => Response::Delete { removed: self.state.entries.remove(&key) },
+            Command::Put { key, value } => Response::Put {
+                previous: self.state.entries.insert(key, value),
+            },
+            Command::Delete { key } => Response::Delete {
+                removed: self.state.entries.remove(&key),
+            },
         };
         self.last_applied = Some(ctx.position);
         out
