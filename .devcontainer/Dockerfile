@@ -22,13 +22,16 @@ RUN rustup toolchain install 1.96.0 --profile minimal --component rustfmt --comp
  && rustup toolchain install 1.89.0 --profile minimal --component clippy \
  && cargo install cargo-generate --locked \
  # The devcontainer CLI remaps `vscode`'s uid/gid to match the host user (so
- # the bind-mounted workspace is writable), but the subdirectories rustup and
- # cargo just created above take the umask's default mode — not group- or
- # other-writable past their top level. A remapped vscode can then read the
- # toolchain/registry but not write cargo's own cache, and the first `cargo
- # build`/`cargo test` in the running container fails with "Permission
- # denied". Open both trees up now, as their owning (pre-remap) uid; this
- # image is a local dev container, not a shared host. (The base image's own
- # preinstalled root-owned toolchain under /usr/local/rustup is skipped with
- # a non-fatal error — vscode doesn't own it and doesn't need to write it.)
- ; chmod -R a+rwX /usr/local/cargo /usr/local/rustup 2>/dev/null; true
+ # the bind-mounted workspace is writable), but $CARGO_HOME/{registry,git}
+ # — the two trees `cargo build`/`cargo test` write into at runtime, fetching
+ # and unpacking deps — were just created above at the umask's default mode:
+ # not group- or other-writable past their top level. A remapped vscode can
+ # then read them but not write into them, and the first build in the
+ # running container fails with "Permission denied" opening the registry
+ # cache. Both toolchains rust-toolchain.toml / this Makefile's MSRV gate
+ # need (1.96.0, 1.89.0) are already installed above, so rustup itself
+ # writes nothing at runtime — /usr/local/rustup and the toolchain binaries
+ # (rustc, cargo, clippy-driver, rustfmt) stay exactly as installed, not
+ # world-writable.
+ && mkdir -p /usr/local/cargo/registry /usr/local/cargo/git \
+ && chmod -R a+rwX /usr/local/cargo/registry /usr/local/cargo/git
