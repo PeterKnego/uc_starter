@@ -400,7 +400,7 @@ and [Keep the journal from growing without bound](https://github.com/PeterKnego/
 **Done when.** `make snapshot-drill` has passed on this machine.
 
 **Common mistakes.**
-- Expecting purge to show on a tiny write volume. Purge drops whole journal segments (4 MiB each here, keeping 1 MiB below the snapshot), so a few demo writes purge nothing. Write a few MiB after an instant, then watch `archive_first_base` in `make status`.
+- Expecting purge to show on a tiny write volume. Purge drops whole journal segments (4 MiB each here, keeping 1 MiB below the snapshot), so a few demo writes purge nothing. Write a few MiB after an instant, then watch the journal's first retained position rise: `scripts/cluster.sh metrics 0 | grep uc2_archive_first_base_bytes`.
 - Reporting P from `last_applied()` after an install. P is exclusive, so the framework would skip the first command above it. Restore the cursor stored in the image, as `src/snapshot.rs` does.
 - Changing the shape of `State` without bumping `IMAGE_VERSION` and keeping a reader for the old image. A node that installs an old artifact then fails. On a running cluster that is an upgrade (Step 12).
 - Forgetting that `freeze()` runs on the apply thread. This starter clones the whole state there, which is fine while it is small. A large state stalls commit during every instant.
