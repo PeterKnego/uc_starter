@@ -391,11 +391,11 @@ and [Keep the journal from growing without bound](https://github.com/PeterKnego/
 
 **Do it yourself.**
 1. `make up` if needed.
-2. `make snapshot-drill`. It writes a value, commands an instant (`uc2ctl snapshot`), waits until all three nodes hold the complete set at P, SIGKILLs one service, restarts it, and reads the value back linearizably.
+2. `make snapshot-drill`. It writes a value, commands an instant (`uc2ctl snapshot`), waits until all three nodes hold the complete set at P, SIGKILLs one service, and restarts it. It waits for the service to re-attach with a new `incarnation=` and catch up (`lag=0`), reads the value back linearizably, and tells you whether the service installed the snapshot or replayed the journal.
 3. `scripts/cluster.sh snapshot-show 0` shows each state machine's newest artifact and the complete `set=`.
 4. For a cadence instead of on-demand instants: `UC_SNAPSHOT_INTERVAL=<bytes> make up FRESH=1`.
 
-**Ask the agent.** > "Run the snapshot drill and show me, from the service log, whether the restarted service installed the snapshot or replayed the journal."
+**Ask the agent.** > "Run the snapshot drill. If the restarted service replayed the journal, explain why it did not need the snapshot, and what I would have to do for it to install the snapshot instead."
 
 **Done when.** `make snapshot-drill` has passed on this machine.
 
@@ -461,11 +461,11 @@ and [Diff replay an FSM change](https://github.com/PeterKnego/ultima_cluster/blo
 
 **Do it yourself.**
 1. `make up`, then `make diffreplay`. It installs `uc2-diffreplay` into `.uc/cargo`.
-2. `make corpus`, *before* you change any code. It takes an instant, writes a few commands, exports the corpus to `upgrade/corpus/`, and keeps the current service binary in `upgrade/old/`. `make next` asks you to bump `FSM_VERSION` first; capture the corpus before you do.
+2. `make corpus`, *before* you change any code. Its traffic is your `scripts/demo.sh`: it runs the demo, takes an instant, runs the demo again above it, and exports that span to `upgrade/corpus/`. It keeps the current service binary in `upgrade/old/` and copies `upgrade/intent.toml.example` to `upgrade/intent.toml`. A corpus proves only what it exercises, so first make sure the demo sends the command you are about to change, with inputs where the change shows. `make next` asks you to bump `FSM_VERSION` first; capture the corpus before you do. `make corpus` refuses once `src/identity.rs` names a different version from the one the cluster runs.
 3. Make the behaviour change. Bump `FSM_VERSION` in `src/identity.rs`, for example to `pack_version(1, 1, 0)`. If the shape of `State` changed, bump `IMAGE_VERSION` in `src/snapshot.rs` and keep reading the old image.
-4. Edit `upgrade/intent.toml`. Map each command's tag byte (its variant index, after the 16-byte session envelope) to an arm name. List the arms you touched. Add one `[[expect]]` per output you meant to change.
-5. `make upgrade-check`, until it prints PASS. On FAIL, `upgrade/report.json` names each problem: `Undeclared`, `Unexplained` or `Absent`.
-6. `make upgrade-drill`. It shows both versions and asks you to type `PIN`. Then it takes the instant, backs up every node, pins, stops every service, starts the new build everywhere, and checks that a value written before the upgrade still reads back.
+4. Edit `upgrade/intent.toml`. Map each command's tag byte (its variant index, after the 16-byte session envelope) to an arm name; the template's `"00" = "put"` and `"01" = "delete"` are the registry's. List the arms you touched. Add one `[[expect]]` per output you meant to change: `surface = "response"` with the `arm` for a changed reply, or `surface = "projection_end"` with no arm when the stored state ends up different.
+5. `make upgrade-check`, until it prints PASS. On FAIL, `upgrade/report.json` names each problem: `Undeclared`, `Unexplained` or `Absent`. A PASS counts only for the code and `upgrade/intent.toml` it ran against; a later FAIL, or any edit to either, withdraws it.
+6. `make upgrade-drill`. It refuses unless step 5's PASS is for exactly this code. It shows both versions and asks you to type `PIN`. Then it builds the new version, takes the instant P, waits until every node holds the complete set at P, backs up every node (into `backups/` under `scripts/cluster.sh root`), pins, and confirms the pin on every node. It stops every service, starts the new build everywhere, and checks that each one logged `pinned install of snap-P`, and that a value written before the upgrade still reads back.
 
 **Ask the agent.** > "Walk me through my first upgrade: draft intent.toml from my diff, run upgrade-check, and stop before the pin so I can confirm it."
 
@@ -499,8 +499,8 @@ list. See
 and [Encrypt traffic between nodes](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/encrypt-node-traffic.md).
 
 **Do it yourself.**
-1. `make package HOSTS=10.0.0.1,10.0.0.2,10.0.0.3`, with your three addresses. It writes `dist/<your-app>-<version>-<arch>.tar.gz`: the binaries, the systemd units, and a `node.toml` and `gateway.toml` per host.
-2. Generate the admin key and the crypto key material as `docs/how-to/deploy.md` describes. UC has no command yet that derives the crypto allowlist, so read that part first.
+1. `make package HOSTS=10.0.0.1,10.0.0.2,10.0.0.3`, with your three addresses. It writes `dist/<your-app>-<version>-<arch>.tar.gz`, where `<version>` is the one in `Cargo.toml`. The bundle holds the binaries, the systemd units, `DEPLOY.md`, and a `node.toml` and `gateway.toml` per host under `hosts/<address>/`. Each node binds, and serves metrics, on its own address; each gateway listens on it.
+2. Generate the admin key and the crypto key material as `docs/how-to/deploy.md` describes. The configs expect `/etc/uc2/node.key`, `/etc/uc2/allowlist.toml` and `/etc/uc2/admin/admin.key`, and a node refuses to start until they exist. UC has no command yet that derives the crypto allowlist, so read that part first.
 3. On each host, following `docs/how-to/deploy.md`: install the binaries, that host's configs under `/etc/uc2/`, and the units. Start the node on every host, then the services, then the gateways.
 4. On a node host, check `uc2ctl status` and `/readyz`. Point your client at all three gateways.
 5. `make done STEP=deploy`.
