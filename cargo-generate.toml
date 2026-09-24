@@ -1,0 +1,25 @@
+[template]
+cargo_generate_version = ">=0.21.0"
+# Only these files are liquid-processed; everything else is copied verbatim,
+# so Rust format strings, shell ${…} and GitHub ${{ … }} stay literal.
+include = ["Cargo.toml", "uc-app.env", "src/identity.rs", "README.md"]
+ignore = [".github/workflows/template-ci.yml", "template-tests", "hooks", "target", ".uc"]
+
+[hooks]
+pre = ["hooks/validate.rhai"]
+
+[placeholders.fsm_name]
+type = "string"
+prompt = "State machine NAME (1-32 of a-z 0-9 _ -, starts with a letter, not uc_…)"
+regex = "^[a-z][a-z0-9_-]{0,31}$"
+
+[placeholders.app_id]
+type = "string"
+prompt = "app_id — the cluster identity every process checks (a-z 0-9 _ -)"
+regex = "^[a-z0-9_-]+$"
+
+[placeholders.base_port]
+type = "string"
+prompt = "Base port: nodes UDP base..+2, gateways TCP base+100..+102, metrics base+200..+202"
+regex = "^[1-9][0-9]{3,4}$"
+default = "7000"
