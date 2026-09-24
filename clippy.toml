@@ -1,0 +1,12 @@
+# Determinism bans for the whole crate. The binaries opt out with
+# #![allow(clippy::disallowed_methods)] because supervision needs a clock;
+# apply never does. RNG crates are not listed (clippy warns on paths that do
+# not resolve); scripts/lint-determinism.sh covers them.
+disallowed-methods = [
+  { path = "std::time::SystemTime::now", reason = "apply must not read a clock: use ctx.time_ns" },
+  { path = "std::time::Instant::now", reason = "apply must not read a clock: use ctx.time_ns" },
+]
+disallowed-types = [
+  { path = "std::collections::HashMap", reason = "iteration order differs per process: use BTreeMap" },
+  { path = "std::collections::HashSet", reason = "iteration order differs per process: use BTreeSet" },
+]
