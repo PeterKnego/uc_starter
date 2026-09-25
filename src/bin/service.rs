@@ -28,7 +28,9 @@ use app::{
     identity::{APP_ID, FSM_NAME},
 };
 use clap::Parser;
-use uc_service::{ServiceBuilder, ServiceConfig, SessionConfig, Sessioned, StateMachine};
+use uc_service::{
+    ServiceBuilder, ServiceConfig, ServiceError, SessionConfig, Sessioned, StateMachine,
+};
 
 #[derive(Parser)]
 #[command(
@@ -103,11 +105,27 @@ fn main() -> anyhow::Result<()> {
     );
     let instance_dir = args.instance_dir.unwrap();
 
+    // Register the stop flag BEFORE any wait: a SIGTERM that arrives while
+    // the node is still booting must end in a clean exit, not a kill by the
+    // default disposition.
+    let stop = Arc::new(AtomicBool::new(false));
+    for sig in [signal_hook::consts::SIGTERM, signal_hook::consts::SIGINT] {
+        signal_hook::flag::register(sig, Arc::clone(&stop))?;
+    }
+    let stopping = || stop.load(Ordering::Relaxed);
+
     // The node creates the control page on startup; under a supervisor we
     // may be launched first.
     let cnc = instance_dir.join("cnc2.dat");
     let deadline = Instant::now() + Duration::from_secs(args.wait_secs);
     while !cnc.exists() {
+        if stopping() {
+            eprintln!(
+                "{}: signalled before attach, exiting",
+                env!("CARGO_BIN_NAME")
+            );
+            return Ok(());
+        }
         anyhow::ensure!(
             Instant::now() < deadline,
             "no node at {} after {}s (is uc2-node running?)",
@@ -120,9 +138,35 @@ fn main() -> anyhow::Result<()> {
     // SessionConfig is part of the replicated contract: every replica must
     // run the same values (state-machine-contract.md § Sessioned). Defaults
     // everywhere, deliberately.
-    let sm = Sessioned::new(Fsm::default(), SessionConfig::default());
-    let cfg = ServiceConfig::new(instance_dir.clone(), args.app_id.clone());
-    let service = ServiceBuilder::new(cfg, sm).start_with_snapshots()?;
+    //
+    // `NodeBooting` (the node has not joined its cluster yet) is retried here,
+    // within the same deadline, with a short per-attempt `boot_wait` so a stop
+    // request is noticed promptly; any other refusal is final.
+    let service = loop {
+        if stopping() {
+            eprintln!(
+                "{}: signalled before attach, exiting",
+                env!("CARGO_BIN_NAME")
+            );
+            return Ok(());
+        }
+        let sm = Sessioned::new(Fsm::default(), SessionConfig::default());
+        let cfg = ServiceConfig::new(instance_dir.clone(), args.app_id.clone())
+            .with_boot_wait(Duration::from_millis(200));
+        match ServiceBuilder::new(cfg, sm).start_with_snapshots() {
+            Ok(service) => break service,
+            Err(ServiceError::NodeBooting) => {
+                anyhow::ensure!(
+                    Instant::now() < deadline,
+                    "node at {} still booting after {}s",
+                    instance_dir.display(),
+                    args.wait_secs
+                );
+                std::thread::sleep(Duration::from_millis(20));
+            }
+            Err(e) => return Err(e.into()),
+        }
+    };
     eprintln!(
         "{}: attached fsm={FSM_NAME:?} version={} row={} epoch={} instance_dir={}",
         env!("CARGO_BIN_NAME"),
@@ -132,12 +176,7 @@ fn main() -> anyhow::Result<()> {
         instance_dir.display()
     );
 
-    let stop = Arc::new(AtomicBool::new(false));
-    for sig in [signal_hook::consts::SIGTERM, signal_hook::consts::SIGINT] {
-        signal_hook::flag::register(sig, Arc::clone(&stop))?;
-    }
-
-    while !stop.load(Ordering::Relaxed) {
+    while !stopping() {
         // A fail-stopped apply thread must not look like a healthy service:
         // exit non-zero so a supervisor restarts us and we reconstruct.
         if !service.is_alive() {
