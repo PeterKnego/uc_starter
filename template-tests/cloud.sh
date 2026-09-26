@@ -194,4 +194,13 @@ grep -q '^9\. \*\*Cloud commands' AGENTS.md || fail "AGENTS.md has no hard rule 
 out="$(cloud-infra/scripts/status.sh 2>&1)" && fail "status.sh ran directly without CLOUD_INFRA_MAKE"
 echo "$out" | grep -q 'run this through make cloud-' || fail "direct script run: wrong message: $out"
 
+# --- Task 11: the cloud path runs on macOS's stock bash 3.2
+hits="$(grep -nE 'mapfile|readarray|declare -A|\$\{[A-Za-z_]+(,,|\^\^)\}|sed -i|^[^#]*[^_]sha256sum' \
+  cloud-infra/scripts/*.sh scripts/package.sh scripts/fetch-uc.sh | grep -v 'command -v sha256sum' || true)"
+[ -z "$hits" ] || fail "bash-3.2/BSD-unsafe constructs on the cloud path:
+$hits"
+if [ -x /bin/bash ] && /bin/bash -c '[ "${BASH_VERSINFO[0]}" -lt 4 ]'; then
+  HOSTS=10.0.0.1,10.0.0.2,10.0.0.3 GATEWAYS=203.0.113.1,203.0.113.2,203.0.113.3 /bin/bash scripts/package.sh >/dev/null || fail "package.sh under /bin/bash 3.2"
+fi
+
 echo "cloud: PASS"

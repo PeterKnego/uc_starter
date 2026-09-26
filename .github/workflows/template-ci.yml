@@ -20,6 +20,12 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml') }}
           restore-keys: ${{ runner.os }}-cargo-
       - run: rustup toolchain install 1.89.0 --profile minimal --component clippy
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.9.8, terraform_wrapper: false }
+      - run: pip3 install --user ansible-core ziglang
+      - uses: taiki-e/install-action@v2
+        with: { tool: cargo-zigbuild }
+      - run: CLOUD_REQUIRE_CROSS=1 bash template-tests/cloud.sh
       - run: bash template-tests/generator.sh
       - run: bash template-tests/lint-determinism.sh
       - run: bash template-tests/tree-hash.sh
@@ -63,3 +69,22 @@ jobs:
         with:
           checkoutPath: ${{ env.P }}
           runCmd: make bins test-cluster
+  macos-package:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@v2
+        with: { tool: "cargo-generate,cargo-zigbuild" }
+      - run: brew install zig
+      - name: generate, then package for both CPUs under macOS's /bin/bash
+        run: |
+          D="$HOME/scratch/uc_starter-gen/mac"; rm -rf "$D"; template-tests/gen.sh "$D"
+          cd "$D/demo-app"
+          for a in x86_64 aarch64; do
+            b="$(HOSTS=10.0.0.1,10.0.0.2,10.0.0.3 GATEWAYS=203.0.113.1,203.0.113.2,203.0.113.3 ARCH=$a /bin/bash scripts/package.sh | head -1)"
+            mkdir -p "x-$a"; tar xzf "$b" -C "x-$a"
+            want=x86-64; [ $a = aarch64 ] && want=aarch64
+            for f in x-$a/*/bin/*; do file -b "$f" | grep -q "ELF 64-bit.*$want" || { echo "FAIL $f: $(file -b "$f")"; exit 1; }; done
+            ! tar tzf "$b" | grep -q '/\._' || { echo "FAIL: ._ files in $b"; exit 1; }
+          done
+          echo "macos-package: PASS"
