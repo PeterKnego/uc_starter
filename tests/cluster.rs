@@ -51,3 +51,34 @@ fn snapshot_drill_and_observe() {
     sh(&["scripts/snapshot-drill.sh"]);
     sh(&["scripts/observe.sh"]);
 }
+
+#[test]
+fn bench_reports_throughput() {
+    let _down = Down;
+    sh(&["scripts/cluster.sh", "up", "--fresh"]);
+    // target/release/deps/cluster-<hash> → target/release/<client>
+    let exe = std::env::current_exe().unwrap();
+    let client = exe
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join(env!("CARGO_PKG_NAME"));
+    let out = Command::new(client)
+        .args(["bench", "--duration-secs", "2", "--inflight", "8"])
+        .env("UC_PORT_OFFSET", "10")
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let text = String::from_utf8_lossy(&out.stdout);
+    let ops: u64 = text
+        .split_whitespace()
+        .find_map(|w| w.strip_prefix("ops="))
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
+    assert!(ops > 0, "{text}");
+}
