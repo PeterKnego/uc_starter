@@ -75,10 +75,18 @@ fn bench_reports_throughput() {
         String::from_utf8_lossy(&out.stderr)
     );
     let text = String::from_utf8_lossy(&out.stdout);
-    let ops: u64 = text
-        .split_whitespace()
-        .find_map(|w| w.strip_prefix("ops="))
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0);
+    let field = |prefix: &str| -> u64 {
+        text.split_whitespace()
+            .find_map(|w| w.strip_prefix(prefix))
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0)
+    };
+    let ops = field("ops=");
     assert!(ops > 0, "{text}");
+    let p50 = field("p50_us=");
+    let p90 = field("p90_us=");
+    let p99 = field("p99_us=");
+    let max = field("max_us=");
+    assert!(p50 <= p90 && p90 <= p99 && p99 <= max, "{text}");
+    assert!(text.contains("inflight=8"), "{text}");
 }

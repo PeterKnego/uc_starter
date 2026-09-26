@@ -242,6 +242,11 @@ fn run(args: &Args) -> Result<(), Fail> {
                 "--duration-secs must be greater than zero".into(),
             ));
         }
+        if *duration_secs > 86400 {
+            return Err(Fail::Args(
+                "--duration-secs must be at most 86400 (a day)".into(),
+            ));
+        }
         bench_command(0)
             .validate()
             .map_err(|e| Fail::Args(format!("bench_command: {e}")))?;
