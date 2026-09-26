@@ -4,7 +4,9 @@ cargo_generate_version = ">=0.21.0"
 # so Rust format strings, shell ${…} and GitHub ${{ … }} stay literal.
 include = ["Cargo.toml", "uc-app.env", "src/identity.rs", "README.md"]
 # LICENSE is the template's own (MIT-0); a generated project picks its own license.
-ignore = [".github/workflows/template-ci.yml", "template-tests", "hooks", "target", ".uc", "LICENSE"]
+# .github/README.md is the template's GitHub landing page (GitHub shows it before
+# the root README.md, whose {{project-name}} heading is for generated projects).
+ignore = [".github/workflows/template-ci.yml", "template-tests", "hooks", "target", ".uc", "LICENSE", ".github/README.md"]
 
 [hooks]
 pre = ["hooks/validate.rhai"]
