@@ -64,3 +64,14 @@ uc_guard_decide() { # "uc2-node <version>" UC_VERSION
   case " $1 " in *" $2 "*) return 0 ;; esac
   die "node0 runs '$1' but UC_VERSION is $2: a UC upgrade is a whole-cluster stop and start — make cloud-destroy, then make cloud-up (or docs/how-to/upgrade-uc.md for a cluster you keep)."
 }
+# cloud-test proves the code the cluster runs; the stamp is keyed on the
+# working tree's code. Record it only when they are the same.
+stamp_decision() {
+  local f="$SECRETS/deployed-code-hash"
+  if [ ! -f "$f" ]; then echo "no record of what the cluster runs — make cloud-deploy, then make cloud-test"; return 1; fi
+  if [ "$(cat "$f")" != "$(code_hash)" ]; then echo "your code changed since it was deployed — make cloud-deploy, then make cloud-test"; return 1; fi
+}
+ttl_note() { # UPTIME_H TTL_H
+  [ "$1" -gt "$2" ] && echo "WARNING: up ${1}h, past ttl_hours=$2 — the hosts bill until make cloud-destroy"
+  return 0
+}

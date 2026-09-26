@@ -131,4 +131,35 @@ if command -v ansible-playbook >/dev/null; then
   done
 else echo "note: ansible not installed — playbook syntax not checked"; fi
 
+# --- Task 8: test/status decisions, unreachable hosts
+mkdir -p cloud-infra/.secrets
+out="$(g stamp_decision)" && fail "stamp_decision accepted a missing deployed-code-hash"
+echo "$out" | grep -q 'make cloud-deploy' || fail "stamp_decision message: $out"
+echo stale >cloud-infra/.secrets/deployed-code-hash
+g stamp_decision >/dev/null && fail "stamp_decision accepted a stale deployed hash"
+bash -c '. scripts/lib.sh; code_hash' >cloud-infra/.secrets/deployed-code-hash
+g stamp_decision >/dev/null || fail "stamp_decision refused the current code"
+[ -z "$(g 'ttl_note 1 4')" ] || fail "ttl_note warned inside the TTL"
+g 'ttl_note 5 4' | grep -q 'past ttl_hours=4' || fail "ttl_note did not warn past the TTL"
+cat >cloud-infra/inventory/hosts.env <<'EOF'
+CLOUD=hetzner
+REGION=nbg1
+INSTANCE_TYPE=cpx21
+ARCH=x86_64
+TTL_HOURS=4
+SSH_USER=root
+SSH_KEY=/nonexistent
+NODE0_PUBLIC=192.0.2.1
+NODE0_PRIVATE=10.10.1.10
+NODE1_PUBLIC=192.0.2.2
+NODE1_PRIVATE=10.10.1.11
+NODE2_PUBLIC=192.0.2.3
+NODE2_PRIVATE=10.10.1.12
+EOF
+out="$(CLOUD_SSH_TIMEOUT=2 cloud-infra/scripts/status.sh 2>&1)" && fail "status passed against unreachable hosts"
+echo "$out" | grep -q 'allow_ssh_cidr' || fail "unreachable host: no CIDR hint: $out"
+out="$(cloud-infra/scripts/logs.sh 7 node 10 2>&1)" && fail "logs accepted HOST=7"
+out="$(cloud-infra/scripts/logs.sh 0 disk 10 2>&1)" && fail "logs accepted PROC=disk"
+rm -f cloud-infra/inventory/hosts.env cloud-infra/.secrets/deployed-code-hash
+
 echo "cloud: PASS"

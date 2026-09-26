@@ -4,10 +4,11 @@
 # shellcheck source=common.sh
 . "$(dirname "$0")/common.sh"
 need_inventory
+hssh 0 true   # dies with the CIDR hint first if node0 is unreachable
 secs="${1:-60}"; end=$(( $(date +%s) + secs ))
 while [ "$(date +%s)" -lt "$end" ]; do
   for i in 0 1 2; do
-    out="$(hssh "$i" "sudo uc2ctl status --instance-dir $INSTANCE_DIR --app-id $APP_ID" 2>/dev/null)" || continue
+    out="$(hssh "$i" "sudo uc2ctl status --instance-dir $INSTANCE_DIR --app-id $APP_ID 2>/dev/null")" || continue
     case "$out" in *"leader=true can_serve=true"*) echo "$i"; exit 0 ;; esac
   done
   sleep 2
