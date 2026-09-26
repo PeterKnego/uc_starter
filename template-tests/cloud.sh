@@ -139,8 +139,8 @@ echo stale >cloud-infra/.secrets/deployed-code-hash
 g stamp_decision >/dev/null && fail "stamp_decision accepted a stale deployed hash"
 bash -c '. scripts/lib.sh; code_hash' >cloud-infra/.secrets/deployed-code-hash
 g stamp_decision >/dev/null || fail "stamp_decision refused the current code"
-[ -z "$(g 'ttl_note 1 4')" ] || fail "ttl_note warned inside the TTL"
-g 'ttl_note 5 4' | grep -q 'past ttl_hours=4' || fail "ttl_note did not warn past the TTL"
+out="$(g 'ttl_note 3600 4')"; [ -z "$out" ] || fail "ttl_note warned inside the TTL"
+out="$(g 'ttl_note 14401 4')"; echo "$out" | grep -q 'past ttl_hours=4' || fail "ttl_note did not warn past the TTL"
 cat >cloud-infra/inventory/hosts.env <<'EOF'
 CLOUD=hetzner
 REGION=nbg1

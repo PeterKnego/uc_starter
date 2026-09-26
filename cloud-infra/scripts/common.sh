@@ -71,7 +71,8 @@ stamp_decision() {
   if [ ! -f "$f" ]; then echo "no record of what the cluster runs — make cloud-deploy, then make cloud-test"; return 1; fi
   if [ "$(cat "$f")" != "$(code_hash)" ]; then echo "your code changed since it was deployed — make cloud-deploy, then make cloud-test"; return 1; fi
 }
-ttl_note() { # UPTIME_H TTL_H
-  [ "$1" -gt "$2" ] && echo "WARNING: up ${1}h, past ttl_hours=$2 — the hosts bill until make cloud-destroy"
+ttl_note() { # UPTIME_S TTL_H — seconds, so a warning is never up to an hour late
+  local h=$(( $1 / 3600 ))
+  [ "$1" -gt $(( $2 * 3600 )) ] && echo "WARNING: up ${h}h, past ttl_hours=$2 — the hosts bill until make cloud-destroy"
   return 0
 }

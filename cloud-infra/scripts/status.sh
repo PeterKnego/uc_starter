@@ -13,5 +13,5 @@ for i in 0 1 2; do
   [ -n "$st" ] || role="node down"
   rz="$(hssh "$i" "curl -s -o /dev/null -w '%{http_code}' http://$(priv "$i"):$(METRICS_PORT "$i")/readyz 2>/dev/null" || echo "---")"
   printf 'node%s  %-15s (%s)  up %sh  %-9s readyz=%s\n' "$i" "$(pub "$i")" "$(priv "$i")" "$up_h" "$role" "$rz"
-  ttl_note "$up_h" "$TTL_HOURS"
+  ttl_note "$up_s" "$TTL_HOURS"
 done
