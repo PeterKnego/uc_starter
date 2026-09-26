@@ -1,15 +1,17 @@
-# uc_starter
+# Start your own project on ultima_cluster
 
-A [`cargo-generate`](https://github.com/cargo-generate/cargo-generate) template
-for applications on [ultima_cluster](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/README.md)
-(UC), with a step-by-step tutor that works with or without an AI agent.
+This is a starter project to help you write high-performance clustered
+applications on [ultima_cluster (UC)](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/README.md).
 
-UC is a state machine replication server: three or more nodes agree on the
-order of the commands in one log, and every node applies that log to its own
-copy of your state machine. Because your `apply` is deterministic, every copy
-ends in the same state, so the application survives the loss of any minority of
-its machines. You write the state machine and its client; UC supplies
-consensus, replication, durability, snapshots and the network front door.
+[State Machine Replication (SMR)](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/notes/state-machine-replication-explained.md)
+is an architectural pattern used by the largest distributed systems in the
+world: financial exchanges, distributed databases, etc. It's a complex
+technology that requires a special approach to writing applications to achieve
+high performance, correctness and resiliency. This is where
+[ultima_cluster](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/README.md)
+steps in: it makes this process much easier for developers and operators.
+
+To make it even easier: this starter project comes preconfigured with all documentation and step-by-step AI tutor. 
 
 ## Start a project
 
