@@ -14,7 +14,7 @@ run it. A permission prompt is not the yes.
 | they say | run | pre-flight to state |
 |---|---|---|
 | deploy / put it on the cloud (no cluster yet) | `make cloud-up` | cloud, region, instance type ×3, ttl_hours (from `cloud-infra/terraform.tfvars`); "creates 3 billable hosts" |
-| deploy my change (cluster up) | `make cloud-deploy` | "rebuilds and restarts the service one host at a time; refuses an FSM_VERSION or UC change" |
+| deploy my change (cluster up) | `make cloud-deploy` | cloud, region, instance type ×3, ttl_hours (from `cloud-infra/terraform.tfvars`); "rebuilds and restarts the service one host at a time; refuses an FSM_VERSION or UC change" |
 | test it on the cloud / on infra | `make cloud-test` (none yet: `make cloud-oneshot`) | "demo, MTU check, stops the leader's node briefly" |
 | bench / load it | `make cloud-bench DURATION=10 INFLIGHT=32` | "10 s of writes from a follower host" |
 | status / is it up / what's it costing | `make cloud-status` | "read-only" |
@@ -29,8 +29,8 @@ instead when the developer wants their latest change out there.
 
 No `cloud-infra/terraform.tfvars` yet: walk them through `cloud-infra/README.md`
 (credentials in `.env`, `cp example.tfvars terraform.tfvars`) before offering
-`cloud-up`. `make -C cloud-infra env-show` checks credentials without printing
-them (it asks too: it matches `*cloud-infra*`).
+`cloud-up`. `make -C cloud-infra cloud-env-show` checks credentials without
+printing them (it asks too: it matches `*make*cloud-*`).
 
 ## After
 

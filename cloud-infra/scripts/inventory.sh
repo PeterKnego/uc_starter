@@ -2,6 +2,7 @@
 # inventory.sh — terraform output → inventory/hosts.yml (ansible) + hosts.env (scripts).
 # shellcheck source=common.sh
 . "$(dirname "$0")/common.sh"
+require_make
 set -e
 json="$(terraform -chdir="$CI_DIR/terraform" output -json)"
 user="$(echo "$json" | jq -r .ssh_user.value)"

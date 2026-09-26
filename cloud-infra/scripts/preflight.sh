@@ -2,6 +2,7 @@
 # preflight.sh — refuse early, with the fix, before anything is created.
 # shellcheck source=common.sh
 . "$(dirname "$0")/common.sh"
+require_make
 [ -f "$TFV" ] || die "no cloud-infra/terraform.tfvars — cp cloud-infra/example.tfvars cloud-infra/terraform.tfvars and edit it"
 for t in terraform ansible-playbook jq ssh; do
   command -v "$t" >/dev/null || die "$t not found — cloud-infra/README.md § Control machine has the install lines"

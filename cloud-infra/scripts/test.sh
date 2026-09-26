@@ -4,6 +4,7 @@
 # `cloud` stamp (WHAT-NEXT.md Step 14) when the cluster runs your current code.
 # shellcheck source=common.sh
 . "$(dirname "$0")/common.sh"
+require_make
 need_inventory
 hssh 0 true   # dies with the CIDR hint first if node0 is unreachable
 record=1; why="$(stamp_decision)" || record=0

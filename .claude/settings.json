@@ -22,9 +22,8 @@
       "Bash(*upgrade pin*)",
       "Bash(*FRESH=1*)",
       "Bash(.uc/bin/uc2ctl:*)",
-      "Bash(*cloud-*)",
-      "Bash(*cloud-infra*)",
-      "Bash(*terraform*)",
+      "Bash(*make*cloud-*)",
+      "Bash(terraform *)",
       "Bash(*ansible*)"
     ]
   },

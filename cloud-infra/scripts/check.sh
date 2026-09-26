@@ -3,6 +3,7 @@
 # address) and one probe through the public gateways.
 # shellcheck source=common.sh
 . "$(dirname "$0")/common.sh"
+require_make
 need_inventory
 hssh 0 true   # dies with the CIDR hint first if node0 is unreachable
 for i in 0 1 2; do

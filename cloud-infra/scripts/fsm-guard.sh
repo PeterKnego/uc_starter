@@ -2,6 +2,7 @@
 # fsm-guard.sh — before cloud-deploy: same FSM_VERSION and same UC, or refuse.
 # shellcheck source=common.sh
 . "$(dirname "$0")/common.sh"
+require_make
 need_inventory
 hssh 0 true   # dies with the CIDR hint first if node0 is unreachable
 running="$(hssh 0 "sudo uc2ctl status --instance-dir $INSTANCE_DIR --app-id $APP_ID 2>/dev/null" \

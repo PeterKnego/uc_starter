@@ -541,7 +541,7 @@ start order — so what you watch is the behaviour, not the plumbing. See
 and [Run a cluster on real hosts](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/run-a-cluster.md).
 
 **Do it yourself.**
-1. Pick a cloud and put its credentials in `cloud-infra/.env` (`cp cloud-infra/.env.example cloud-infra/.env`). `make -C cloud-infra env-show` checks them without printing them.
+1. Pick a cloud and put its credentials in `cloud-infra/.env` (`cp cloud-infra/.env.example cloud-infra/.env`). `make -C cloud-infra cloud-env-show` checks them without printing them.
 2. `cp cloud-infra/example.tfvars cloud-infra/terraform.tfvars`; set your SSH key and `allow_ssh_cidr` to your IP/32.
 3. `make cloud-oneshot`: it creates the hosts, deploys, runs `make cloud-test` and destroys them. Or step by step: `make cloud-up`, `make cloud-test`, `make cloud-bench`, `make cloud-status`, then `make cloud-destroy`.
 4. Read the failover part of the test output: which node led, that a write succeeded while it was down, that it came back.

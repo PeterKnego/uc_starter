@@ -12,6 +12,10 @@ INV_ENV="$CI_DIR/inventory/hosts.env"
 SECRETS="$CI_DIR/.secrets"
 INSTANCE_DIR="/srv/uc2/$APP_NAME"
 
+require_make() { # every script but common.sh itself calls this first
+  [ "${CLOUD_INFRA_MAKE:-}" = 1 ] \
+    || die "run this through make cloud-* (the top-level Makefile), not directly — AGENTS.md rule 9"
+}
 tfvar() { # NAME → its value in terraform.tfvars (quotes and comments stripped)
   [ -f "$TFV" ] || return 0
   sed -nE "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*\"?([^\"#]*)\"?.*/\1/p" "$TFV" | head -1 | sed -E 's/[[:space:]]+$//'

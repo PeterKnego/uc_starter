@@ -3,6 +3,7 @@
 # "leader=true can_serve=true" (the text scripts/cluster.sh leader matches).
 # shellcheck source=common.sh
 . "$(dirname "$0")/common.sh"
+require_make
 need_inventory
 hssh 0 true   # dies with the CIDR hint first if node0 is unreachable
 secs="${1:-60}"; end=$(( $(date +%s) + secs ))

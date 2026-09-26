@@ -94,8 +94,9 @@ order (nodes, then a serving leader, then services, then gateways).
 8. **Scratch files go under `target/`**, never outside the project (not
    `/tmp`, not `$HOME`): `mkdir -p target/scratch` and write there.
 9. **Cloud commands need a yes in this conversation, every time.** Before any
-   `make cloud-*` target, anything under `cloud-infra/`, `terraform` or
-   `ansible*`, say what you will run and what it does, and wait for the
+   `make cloud-*` target (including inside `cloud-infra/`), `terraform` or
+   `ansible*` command — the scripts under `cloud-infra/scripts/` refuse to run
+   outside `make` — say what you will run and what it does, and wait for the
    developer's yes in the conversation. For `cloud-up`, `cloud-oneshot`,
    `cloud-deploy` and `cloud-destroy` the pre-flight names the cloud, region,
    instance type × 3, `ttl_hours`, and what is created, changed or destroyed

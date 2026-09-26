@@ -2,6 +2,7 @@
 # status.sh — the hosts, their uptime against ttl_hours, leadership, /readyz.
 # shellcheck source=common.sh
 . "$(dirname "$0")/common.sh"
+require_make
 need_inventory
 hssh 0 true   # dies with the CIDR hint first if node0 is unreachable
 echo "$CLOUD $REGION $INSTANCE_TYPE ×3 ($ARCH), ttl_hours=$TTL_HOURS"

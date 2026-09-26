@@ -3,6 +3,7 @@
 # got to) and clear this cluster's local files. No state, no terraform call.
 # shellcheck source=common.sh
 . "$(dirname "$0")/common.sh"
+require_make
 STATE="$CI_DIR/terraform/terraform.tfstate"
 clear_local() { rm -f "$INV_YML" "$INV_ENV" "$SECRETS/admin.key" "$SECRETS/known_hosts" "$SECRETS/deployed-code-hash"; }
 if [ -f "$STATE" ]; then

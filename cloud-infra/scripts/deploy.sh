@@ -7,6 +7,7 @@
 # go through make cloud-deploy (fsm-guard.sh first).
 # shellcheck source=common.sh
 . "$(dirname "$0")/common.sh"
+require_make
 set -e
 need_inventory
 restart=false; [ "${1:-}" = --restart ] && restart=true

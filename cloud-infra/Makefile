@@ -14,6 +14,11 @@ OWNER := $(shell printf '%s-%s' '$(APP_NAME)' "$${USER:-dev}" | tr 'A-Z_.' 'a-z-
 TF_VAR_owner ?= $(OWNER)
 TF_VAR_app_name := $(APP_NAME)
 TF_VAR_base_port := $(BASE_PORT)
+# Every target here has a cloud- name (AGENTS.md rule 9): bare `make destroy`
+# run from inside cloud-infra/ matches no target. CLOUD_INFRA_MAKE=1 is
+# exported to every recipe's subshell (the bare `export` below exports all
+# make variables); the scripts refuse to run without it (common.sh, require_make).
+CLOUD_INFRA_MAKE := 1
 export
 
 TF     := terraform -chdir=terraform
@@ -23,27 +28,27 @@ DURATION ?= 10
 INFLIGHT ?= 32
 LINES    ?= 40
 
-.PHONY: env-show preflight up deploy test bench status logs destroy oneshot inventory
+.PHONY: cloud-env-show cloud-preflight cloud-up cloud-deploy cloud-test cloud-bench cloud-status cloud-logs cloud-destroy cloud-oneshot cloud-inventory
 
-env-show:   ; @$(S)/env-show.sh
-preflight:  ; @$(S)/preflight.sh
-inventory:  ; @$(S)/inventory.sh
+cloud-env-show:   ; @$(S)/env-show.sh
+cloud-preflight:  ; @$(S)/preflight.sh
+cloud-inventory:  ; @$(S)/inventory.sh
 
-up: preflight
+cloud-up: cloud-preflight
 	$(TF) init -input=false >/dev/null
 	$(TF) apply -auto-approve -input=false -var-file=$(TFVARS)
 	$(S)/inventory.sh
 	$(S)/deploy.sh
 
-deploy: preflight
+cloud-deploy: cloud-preflight
 	$(S)/fsm-guard.sh
 	$(S)/deploy.sh --restart
 
-test:    ; $(S)/test.sh
-bench:   ; $(S)/bench.sh $(DURATION) $(INFLIGHT)
-status:  ; @$(S)/status.sh
-logs:    ; @$(S)/logs.sh "$(HOST)" "$(PROC)" "$(LINES)"
-destroy: ; $(S)/destroy.sh
+cloud-test:    ; $(S)/test.sh
+cloud-bench:   ; $(S)/bench.sh $(DURATION) $(INFLIGHT)
+cloud-status:  ; @$(S)/status.sh
+cloud-logs:    ; @$(S)/logs.sh "$(HOST)" "$(PROC)" "$(LINES)"
+cloud-destroy: ; $(S)/destroy.sh
 
-oneshot:
-	$(MAKE) up && $(MAKE) test; rc=$$?; $(MAKE) destroy; exit $$rc
+cloud-oneshot:
+	$(MAKE) cloud-up && $(MAKE) cloud-test; rc=$$?; $(MAKE) cloud-destroy; exit $$rc

@@ -4,7 +4,7 @@
 /upgrade/corpus/
 /upgrade/old/
 /upgrade/report.json
-/.claude/settings.local.json
+/.claude/settings.local.json*
 
 /cloud-infra/.env
 /cloud-infra/.secrets/

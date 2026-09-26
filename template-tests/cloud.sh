@@ -81,32 +81,32 @@ printf '#!/bin/sh\necho "terraform must not run here" >&2; exit 1\n' >"$FAKE/ter
 for t in ansible-playbook ansible; do printf '#!/bin/sh\nexit 0\n' >"$FAKE/$t"; done
 chmod +x "$FAKE"/*
 cmk() { env -u HCLOUD_TOKEN PATH="$FAKE:$PATH" make -s -C cloud-infra "$@"; }
-out="$(cmk preflight 2>&1)" && fail "preflight passed without terraform.tfvars"
+out="$(cmk cloud-preflight 2>&1)" && fail "preflight passed without terraform.tfvars"
 echo "$out" | grep -q 'cp cloud-infra/example.tfvars' || fail "preflight without tfvars: $out"
 cp cloud-infra/example.tfvars cloud-infra/terraform.tfvars
 printf '#!/bin/sh\necho '"'"'{"terraform_version":"1.6.0"}'"'"'\n' >"$FAKE/terraform"; chmod +x "$FAKE/terraform"
-out="$(cmk preflight 2>&1)" && fail "preflight accepted terraform 1.6"
+out="$(cmk cloud-preflight 2>&1)" && fail "preflight accepted terraform 1.6"
 echo "$out" | grep -q 'need 1.7' || fail "old terraform: $out"
 printf '#!/bin/sh\necho '"'"'{"terraform_version":"1.9.8"}'"'"'\n' >"$FAKE/terraform"; chmod +x "$FAKE/terraform"
-out="$(cmk preflight 2>&1)" && fail "preflight passed without HCLOUD_TOKEN"
+out="$(cmk cloud-preflight 2>&1)" && fail "preflight passed without HCLOUD_TOKEN"
 echo "$out" | grep -q 'HCLOUD_TOKEN' || fail "missing token: $out"
 printf 'HCLOUD_TOKEN="abc"\n' >cloud-infra/.env
-cmk env-show | grep -qx 'HCLOUD_TOKEN: set (3 chars)' || fail ".env quotes not stripped: $(cmk env-show)"
-cmk env-show | grep -q 'abc' && fail "env-show printed a secret"
-cmk env-show | grep -qE "^owner: demo-app-[a-z0-9-]+$" || fail "owner: $(cmk env-show)"
+cmk cloud-env-show | grep -qx 'HCLOUD_TOKEN: set (3 chars)' || fail ".env quotes not stripped: $(cmk cloud-env-show)"
+cmk cloud-env-show | grep -q 'abc' && fail "env-show printed a secret"
+cmk cloud-env-show | grep -qE "^owner: demo-app-[a-z0-9-]+$" || fail "owner: $(cmk cloud-env-show)"
 rm cloud-infra/.env
 # destroy with no state: nothing to destroy, terraform not called, local files cleared
 printf '#!/bin/sh\necho "terraform must not run here" >&2; exit 1\n' >"$FAKE/terraform"; chmod +x "$FAKE/terraform"
 mkdir -p cloud-infra/.secrets; : >cloud-infra/.secrets/admin.key; : >cloud-infra/inventory/hosts.yml; : >cloud-infra/inventory/hosts.env
-out="$(cmk destroy 2>&1)" || fail "destroy with no state failed: $out"
+out="$(cmk cloud-destroy 2>&1)" || fail "destroy with no state failed: $out"
 echo "$out" | grep -q 'nothing to destroy' || fail "destroy with no state: $out"
 [ ! -e cloud-infra/.secrets/admin.key ] && [ ! -e cloud-infra/inventory/hosts.yml ] || fail "destroy left local cluster files"
 mkdir -p cloud-infra/terraform; printf '{"version":4,"resources":[]}\n' >cloud-infra/terraform/terraform.tfstate
-out="$(cmk destroy 2>&1)"; echo "$out" | grep -q 'nothing to destroy' || fail "destroy with an empty state: $out"
+out="$(cmk cloud-destroy 2>&1)"; echo "$out" | grep -q 'nothing to destroy' || fail "destroy with an empty state: $out"
 # destroy with a corrupt state: refuses, terraform never called, local files kept
 mkdir -p cloud-infra/.secrets; : >cloud-infra/.secrets/admin.key; : >cloud-infra/inventory/hosts.env
 printf 'not json' >cloud-infra/terraform/terraform.tfstate
-out="$(cmk destroy 2>&1)" && fail "destroy accepted an unreadable terraform.tfstate"
+out="$(cmk cloud-destroy 2>&1)" && fail "destroy accepted an unreadable terraform.tfstate"
 echo "$out" | grep -q 'nothing was destroyed' || fail "corrupt state: $out"
 [ -e cloud-infra/inventory/hosts.env ] || fail "destroy removed hosts.env for a state it could not read"
 [ -e cloud-infra/.secrets/admin.key ] || fail "destroy removed admin.key for a state it could not read"
@@ -156,26 +156,42 @@ NODE1_PRIVATE=10.10.1.11
 NODE2_PUBLIC=192.0.2.3
 NODE2_PRIVATE=10.10.1.12
 EOF
-out="$(CLOUD_SSH_TIMEOUT=2 cloud-infra/scripts/status.sh 2>&1)" && fail "status passed against unreachable hosts"
+out="$(CLOUD_INFRA_MAKE=1 CLOUD_SSH_TIMEOUT=2 cloud-infra/scripts/status.sh 2>&1)" && fail "status passed against unreachable hosts"
 echo "$out" | grep -q 'allow_ssh_cidr' || fail "unreachable host: no CIDR hint: $out"
-out="$(cloud-infra/scripts/logs.sh 7 node 10 2>&1)" && fail "logs accepted HOST=7"
-out="$(cloud-infra/scripts/logs.sh 0 disk 10 2>&1)" && fail "logs accepted PROC=disk"
+out="$(CLOUD_INFRA_MAKE=1 cloud-infra/scripts/logs.sh 7 node 10 2>&1)" && fail "logs accepted HOST=7"
+out="$(CLOUD_INFRA_MAKE=1 cloud-infra/scripts/logs.sh 0 disk 10 2>&1)" && fail "logs accepted PROC=disk"
 rm -f cloud-infra/inventory/hosts.env cloud-infra/.secrets/deployed-code-hash
 
 # --- Task 9: agent permissions and ignores
-python3 - <<'PY' || fail "settings.json ask rules do not cover the cloud targets"
-import json, fnmatch, re
+python3 - <<'PY' || fail "settings.json ask rules do not correctly gate cloud/terraform/ansible commands"
+import json, fnmatch
 ask = [r[len("Bash("):-1] for r in json.load(open(".claude/settings.json"))["permissions"]["ask"]]
-targets = re.findall(r"^(cloud-[a-z]+):", open("Makefile").read(), re.M)
-assert len(targets) == 8, targets
-cmds = [f"make {t}" for t in targets] + ["make -C cloud-infra up", "terraform apply", "ansible-playbook deploy.yml", "cloud-infra/scripts/status.sh"]
-missing = [c for c in cmds if not any(fnmatch.fnmatch(c, a) for a in ask)]
-assert not missing, missing
+must = [
+    "make cloud-up", "make cloud-destroy",
+    "make -C cloud-infra cloud-destroy", "make -C cloud-infra cloud-env-show",
+    "cd cloud-infra && make cloud-destroy",
+    "terraform apply", "terraform -chdir=cloud-infra/terraform destroy",
+    "ansible-playbook deploy.yml", "ansible cluster -m ping",
+]
+must_not = [
+    "cat cloud-infra/README.md", "grep -rn foo cloud-infra/",
+    "sed -n 1p cloud-infra/scripts/common.sh", "shellcheck -x cloud-infra/scripts/test.sh",
+    "git diff main -- cloud-infra/", "cd /x/.superpowers/sdd/2026-09-26-cloud-infra && ls",
+    "make check", "make up",
+]
+missing = [c for c in must if not any(fnmatch.fnmatch(c, a) for a in ask)]
+assert not missing, ("should ask but does not", missing)
+over = [c for c in must_not if any(fnmatch.fnmatch(c, a) for a in ask)]
+assert not over, ("asks but should not", over)
 PY
 for p in cloud-infra/.env cloud-infra/.secrets/admin.key cloud-infra/terraform.tfvars cloud-infra/terraform/terraform.tfstate cloud-infra/inventory/hosts.yml cloud-infra/inventory/hosts.env; do
   git check-ignore -q "$p" || fail "$p is not gitignored"   # cargo-generate made the project a git repo
 done
 [ -f .claude/skills/cloud-infra/SKILL.md ] || fail "no cloud-infra skill"
 grep -q '^9\. \*\*Cloud commands' AGENTS.md || fail "AGENTS.md has no hard rule 9"
+
+# Rule-9 bypass: a cloud script run directly (not through make cloud-*) refuses.
+out="$(cloud-infra/scripts/status.sh 2>&1)" && fail "status.sh ran directly without CLOUD_INFRA_MAKE"
+echo "$out" | grep -q 'run this through make cloud-' || fail "direct script run: wrong message: $out"
 
 echo "cloud: PASS"

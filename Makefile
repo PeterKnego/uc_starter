@@ -64,18 +64,18 @@ package: ## deploy bundle: make package HOSTS=ip0,ip1,ip2
 uc-upgrade: ## move to another UC release: make uc-upgrade VERSION=x
 	scripts/uc-upgrade.sh $(VERSION)
 cloud-up: ## 3 cloud hosts + deploy (billable; asks first) — cloud-infra/README.md
-	$(MAKE) -C cloud-infra up
+	$(MAKE) -C cloud-infra cloud-up
 cloud-deploy: ## rebuild + redeploy the app, same FSM_VERSION only
-	$(MAKE) -C cloud-infra deploy
+	$(MAKE) -C cloud-infra cloud-deploy
 cloud-test: ## demo, MTU and a host failover on the cloud cluster
-	$(MAKE) -C cloud-infra test
+	$(MAKE) -C cloud-infra cloud-test
 cloud-bench: ## load it: make cloud-bench DURATION=10 INFLIGHT=32
-	$(MAKE) -C cloud-infra bench DURATION=$(or $(DURATION),10) INFLIGHT=$(or $(INFLIGHT),32)
+	$(MAKE) -C cloud-infra cloud-bench DURATION=$(or $(DURATION),10) INFLIGHT=$(or $(INFLIGHT),32)
 cloud-status: ## hosts, uptime vs ttl_hours, leader, /readyz
-	@$(MAKE) -s -C cloud-infra status
+	@$(MAKE) -s -C cloud-infra cloud-status
 cloud-logs: ## make cloud-logs HOST=0 PROC=node|service|gateway
-	@$(MAKE) -s -C cloud-infra logs HOST=$(HOST) PROC=$(PROC) LINES=$(or $(LINES),40)
+	@$(MAKE) -s -C cloud-infra cloud-logs HOST=$(HOST) PROC=$(PROC) LINES=$(or $(LINES),40)
 cloud-destroy: ## tear the cloud hosts down
-	$(MAKE) -C cloud-infra destroy
+	$(MAKE) -C cloud-infra cloud-destroy
 cloud-oneshot: ## up, test, destroy
-	$(MAKE) -C cloud-infra oneshot
+	$(MAKE) -C cloud-infra cloud-oneshot

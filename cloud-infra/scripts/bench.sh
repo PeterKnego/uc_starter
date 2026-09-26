@@ -3,6 +3,7 @@
 # host, through the public gateways (in-cloud latency).
 # shellcheck source=common.sh
 . "$(dirname "$0")/common.sh"
+require_make
 d="${1:-10}"; n="${2:-32}"
 case "$d$n" in *[!0-9]*|'') die "usage: make cloud-bench DURATION=<secs> INFLIGHT=<n>" ;; esac
 need_inventory

@@ -2,6 +2,7 @@
 # env-show.sh — which credentials make will pass on (lengths, never values).
 # shellcheck source=common.sh
 . "$(dirname "$0")/common.sh"
+require_make
 # One buffered printf at the end, not one echo per line: a caller that pipes
 # straight into `grep -q` (no capture) can close its end after the first
 # match, and a slow multi-write producer then dies to SIGPIPE under
