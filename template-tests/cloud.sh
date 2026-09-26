@@ -162,4 +162,20 @@ out="$(cloud-infra/scripts/logs.sh 7 node 10 2>&1)" && fail "logs accepted HOST=
 out="$(cloud-infra/scripts/logs.sh 0 disk 10 2>&1)" && fail "logs accepted PROC=disk"
 rm -f cloud-infra/inventory/hosts.env cloud-infra/.secrets/deployed-code-hash
 
+# --- Task 9: agent permissions and ignores
+python3 - <<'PY' || fail "settings.json ask rules do not cover the cloud targets"
+import json, fnmatch, re
+ask = [r[len("Bash("):-1] for r in json.load(open(".claude/settings.json"))["permissions"]["ask"]]
+targets = re.findall(r"^(cloud-[a-z]+):", open("Makefile").read(), re.M)
+assert len(targets) == 8, targets
+cmds = [f"make {t}" for t in targets] + ["make -C cloud-infra up", "terraform apply", "ansible-playbook deploy.yml", "cloud-infra/scripts/status.sh"]
+missing = [c for c in cmds if not any(fnmatch.fnmatch(c, a) for a in ask)]
+assert not missing, missing
+PY
+for p in cloud-infra/.env cloud-infra/.secrets/admin.key cloud-infra/terraform.tfvars cloud-infra/terraform/terraform.tfstate cloud-infra/inventory/hosts.yml cloud-infra/inventory/hosts.env; do
+  git check-ignore -q "$p" || fail "$p is not gitignored"   # cargo-generate made the project a git repo
+done
+[ -f .claude/skills/cloud-infra/SKILL.md ] || fail "no cloud-infra skill"
+grep -q '^9\. \*\*Cloud commands' AGENTS.md || fail "AGENTS.md has no hard rule 9"
+
 echo "cloud: PASS"

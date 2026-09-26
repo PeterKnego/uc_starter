@@ -21,6 +21,8 @@ grep -q 'LITERAL-CHECK {{not_a_placeholder}}' "$P/tests/cluster.rs" || fail "tes
 (cd "$P" && cargo metadata --format-version 1 --no-deps >/dev/null) || fail "generated Cargo.toml does not parse"
 [ ! -e "$P/LICENSE" ] || fail "a LICENSE was generated — the license is the developer's choice"
 [ ! -e "$P/.github/README.md" ] || fail ".github/README.md leaked — it would shadow the project's README on GitHub"
+[ -f "$P/cloud-infra/Makefile" ] || fail "cloud-infra/ missing from the project"
+[ ! -e "$P/.github/workflows/cloud-e2e.yml" ] || fail "cloud-e2e.yml leaked into the project"
 
 for bad in uc_mine 9lives Upper; do
   if "$HERE/gen.sh" "$OUT/bad-$bad" bad-app "$bad" x 7000 >/dev/null 2>&1; then fail "fsm_name $bad accepted"; fi

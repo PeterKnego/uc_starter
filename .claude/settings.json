@@ -21,7 +21,11 @@
       "Bash(*UC_CONFIRM_PIN*)",
       "Bash(*upgrade pin*)",
       "Bash(*FRESH=1*)",
-      "Bash(.uc/bin/uc2ctl:*)"
+      "Bash(.uc/bin/uc2ctl:*)",
+      "Bash(*cloud-*)",
+      "Bash(*cloud-infra*)",
+      "Bash(*terraform*)",
+      "Bash(*ansible*)"
     ]
   },
   "hooks": {
