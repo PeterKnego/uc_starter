@@ -3,7 +3,8 @@ cargo_generate_version = ">=0.21.0"
 # Only these files are liquid-processed; everything else is copied verbatim,
 # so Rust format strings, shell ${…} and GitHub ${{ … }} stay literal.
 include = ["Cargo.toml", "uc-app.env", "src/identity.rs", "README.md"]
-ignore = [".github/workflows/template-ci.yml", "template-tests", "hooks", "target", ".uc"]
+# LICENSE is the template's own (MIT-0); a generated project picks its own license.
+ignore = [".github/workflows/template-ci.yml", "template-tests", "hooks", "target", ".uc", "LICENSE"]
 
 [hooks]
 pre = ["hooks/validate.rhai"]
