@@ -13,14 +13,28 @@ OFF="${UC_PORT_OFFSET:-0}"
 NODE_PORT()    { echo $((BASE_PORT + OFF + $1)); }
 GW_PORT()      { echo $((BASE_PORT + OFF + 100 + $1)); }
 METRICS_PORT() { echo $((BASE_PORT + OFF + 200 + $1)); }
-gateways_csv() { echo "127.0.0.1:$(GW_PORT 0),127.0.0.1:$(GW_PORT 1),127.0.0.1:$(GW_PORT 2)"; }
-# cargo may be configured with a shared target dir, so ask it where release
-# binaries land rather than assuming ./target.
-app_bin_dir() {
+# UC_GATEWAYS overrides the local three (cloud-infra points the demo at the
+# cloud's public members with it).
+gateways_csv() { echo "${UC_GATEWAYS:-127.0.0.1:$(GW_PORT 0),127.0.0.1:$(GW_PORT 1),127.0.0.1:$(GW_PORT 2)}"; }
+# cargo may be configured with a shared target dir, so ask it where binaries
+# land rather than assuming ./target.
+app_target_dir() {
   local t; t="$(cargo metadata --format-version=1 --no-deps 2>/dev/null | sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')"
-  echo "${t:-$PROJECT_DIR/target}/release"
+  echo "${t:-$PROJECT_DIR/target}"
 }
+app_bin_dir() { echo "$(app_target_dir)/release"; }
 die() { printf '%s: %s\n' "$(basename "$0")" "$*" >&2; exit 3; }
+# macOS has shasum, not sha256sum; both print "<hex>  <name>".
+sha256_stdin() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; }
+verify_sha256() { # SUMS FILE → 0 when FILE's line in SUMS matches its content
+  local want got
+  want="$(awk -v f="$(basename "$2")" '$2==f || $2=="*"f {print $1}' "$1")"
+  got="$(sha256_stdin <"$2" | cut -c1-64)"
+  [ -n "$want" ] && [ "$want" = "$got" ]
+}
+# The oldest glibc a cross-built bundle runs on (Ubuntu 22.04 ships 2.35;
+# cloud-infra's hosts run 24.04).
+GLIBC_FLOOR=2.35
 require_linux() {
   [ "$(uname -s)" = Linux ] || die "ultima_cluster nodes run on Linux only (this is $(uname -s)). Open this project in its devcontainer — see README.md § Devcontainer."
 }
@@ -28,11 +42,13 @@ require_linux() {
 # from a POSIX-locale shell; editor droppings (vim .*.sw?, emacs *~ and .#*)
 # are not code; a missing path (no Cargo.lock yet) is skipped, not an error.
 tree_hash() { # paths… → 16 hex chars over file names + contents
-  local p; for p in "$@"; do
+  local p f; for p in "$@"; do
     if [ -e "$p" ]; then
       find "$p" -type f -not -path '*/target/*' -not -name '.*.sw?' -not -name '*~' -not -name '.#*' -print0
     fi
-  done | LC_ALL=C sort -z | xargs -0 sha256sum 2>/dev/null | sha256sum | cut -c1-16
+  done | LC_ALL=C sort -z | while IFS= read -r -d '' f; do
+    printf '%s  %s\n' "$(sha256_stdin <"$f" | cut -c1-64)" "$f"
+  done | sha256_stdin | cut -c1-16
 }
 code_hash()            { tree_hash src Cargo.toml Cargo.lock; }
 # What an upgrade-check PASS vouches for: the code, the declaration, the
