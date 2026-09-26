@@ -67,4 +67,12 @@ else echo "note: cargo-zigbuild not installed — cross build not checked"; fi
 b="$(HOSTS=10.0.0.1,10.0.0.2,10.0.0.3 scripts/package.sh | head -1)"
 case "$b" in *"-$mach.tar.gz") ;; *) fail "default ARCH is not this machine's: $b" ;; esac
 
+# --- Task 5: terraform
+if command -v terraform >/dev/null; then
+  (cd cloud-infra/terraform && terraform init -backend=false -input=false >/dev/null \
+    && terraform fmt -check -recursive && terraform validate >/dev/null && terraform test) \
+    || fail "terraform init/fmt/validate/test"
+  rm -rf cloud-infra/terraform/.terraform cloud-infra/terraform/.terraform.lock.hcl
+else echo "note: terraform not installed — terraform checks skipped"; fi
+
 echo "cloud: PASS"
