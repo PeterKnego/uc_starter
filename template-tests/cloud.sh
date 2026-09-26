@@ -120,6 +120,9 @@ echo "$out" | grep -q 'make cloud-destroy' || fail "fsm guard message: $out"
 out="$(g 'fsm_guard_decide "" 1.0.0')" && fail "fsm guard accepted an unreadable running version"
 g 'uc_guard_decide "uc2-node 2.13.0" 2.13.0' >/dev/null || fail "uc guard refused the same UC"
 out="$(g 'uc_guard_decide "uc2-node 2.12.0" 2.13.0')" && fail "uc guard accepted a UC change"
+out="$(g 'uc_guard_decide "uc2-node 12.13.0" 2.13.0')" && fail "uc guard accepted 2.13.0 as a bare suffix of 12.13.0"
+echo "$out" | grep -q 'make cloud-destroy' || fail "uc guard suffix-match message: $out"
+out="$(g 'uc_guard_decide "uc2-node 2.13.0" ""')" && fail "uc guard accepted an empty UC_VERSION"
 if command -v ansible-playbook >/dev/null; then
   printf 'all:\n  children:\n    cluster:\n      hosts:\n        n0: {node_id: "0", private_ip: 10.10.1.10}\n' >"$OUT/inv.yml"
   for pb in deploy serve; do

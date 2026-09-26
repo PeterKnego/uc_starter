@@ -58,6 +58,9 @@ fsm_guard_decide() { # RUNNING SOURCE
 }
 # A new UC release is a whole-cluster stop and start (docs/how-to/upgrade-uc.md).
 uc_guard_decide() { # "uc2-node <version>" UC_VERSION
-  case "$1" in *" $2"|*" $2 "*|*"$2") return 0 ;; esac
+  [ -n "$2" ] || die "UC_VERSION is empty — cannot compare against node0. make cloud-destroy, then make cloud-up once UC_VERSION is fixed."
+  # Whitespace-padded substring match: $2 must appear as a whole word of $1,
+  # never as a bare suffix (a naive *"$2" pattern would accept "12.13.0" for "2.13.0").
+  case " $1 " in *" $2 "*) return 0 ;; esac
   die "node0 runs '$1' but UC_VERSION is $2: a UC upgrade is a whole-cluster stop and start — make cloud-destroy, then make cloud-up (or docs/how-to/upgrade-uc.md for a cluster you keep)."
 }
