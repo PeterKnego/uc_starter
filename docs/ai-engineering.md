@@ -47,6 +47,7 @@ up:
 | `determinism-review` | the checklist: clocks, RNG, hash iteration, floats, overflow, panics in `apply`, changed `ids()` call counts, enum and field order, image compatibility (a new `IMAGE_VERSION` with an old-image reader: `#[serde(default)]` does not let bincode read an old image) |
 | `upgrade-fsm` | the diff-replay judgement: draft the intent declaration, classify the change, attribute the report's residue to a hunk, judge the state at the origin, spot what a lint cannot. Ends by asking before `make upgrade-drill` |
 | `troubleshoot-cluster` | run `make status`, read the process logs, match the named refusal against [troubleshooting](troubleshooting.md), quote the fix; never delete cluster state without asking |
+| `cloud-infra` | deploy, test, bench, check status, log or tear down the app on cloud hosts; states the cost and what will be created, changed or destroyed, and waits for a yes in the conversation before any `cloud-*` command (rule 9 — the agent states the cost and waits for your yes before any cloud command) |
 
 **Subagent** `determinism-reviewer` (`.claude/agents/determinism-reviewer.md`):
 a read-only reviewer that checks a state-machine diff against the

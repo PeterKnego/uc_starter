@@ -4,6 +4,8 @@ Run the app on three Linux machines under systemd: one UC node per machine,
 with your service and a gateway beside it. Three processes on one host are a
 majority of processes, not of machines; one power cut takes them all.
 
+> On Hetzner, AWS or GCP, `cloud-infra/` does every step below for you: WHAT-NEXT.md Step 14.
+
 In this guide `<APP_NAME>`, `<APP_ID>` and `<BASE_PORT>` are the values in
 your `uc-app.env`, and `ADDR0`, `ADDR1`, `ADDR2` are your three hosts' IPv4
 addresses, in the order you pass them to `make package`.

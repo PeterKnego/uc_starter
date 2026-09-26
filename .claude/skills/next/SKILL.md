@@ -41,11 +41,11 @@ the check) or `complete` (id `done`: every step is finished).
 
 | field | meaning |
 |---|---|
-| `step`, `of` | the step number in `WHAT-NEXT.md` (`### Step N`), of 13 |
+| `step`, `of` | the step number in `WHAT-NEXT.md` (`### Step N`), of 14 |
 | `part` | 1 (first working app) or 2 (to production) |
 | `id` | the step id (`<!-- step: id -->` in `WHAT-NEXT.md`); the argument to `make done` / `make skip` |
 | `title` | the step's title |
-| `status` | `todo`, `stale` (proven once, code changed since: re-run its check), `complete` (id `done`, all 13 finished) |
+| `status` | `todo`, `stale` (proven once, code changed since: re-run its check), `complete` (id `done`, all 14 finished) |
 | `part1_complete` | Part 1 is recorded as finished on this machine (`.uc/state`, not committed) |
 | `part1_just_completed` | this is the first look at Part 2: announce that Part 1 is complete |
 | `detail` | what is still missing for this step, plus `note: Step N (…) is stale` lines for earlier proofs |

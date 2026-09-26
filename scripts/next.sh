@@ -23,6 +23,7 @@ STEPS=(
   "observe|2|Observe the cluster"
   "upgrade|2|Your first FSM upgrade"
   "deploy|2|Deploy to three machines"
+  "cloud|2|Test on three cloud hosts"
 )
 if [ "${1:-}" = --list ]; then for s in "${STEPS[@]}"; do echo "${s%%|*}"; done; exit 0; fi
 JSON=0; [ "${1:-}" = --json ] && JSON=1
@@ -66,17 +67,18 @@ check_deploy()   {
   ls dist/*.tar.gz >/dev/null 2>&1 || { DETAIL+=("run: make package HOSTS=ip0,ip1,ip2"); return 1; }
   progress_has deploy || { DETAIL+=("deploy it (docs/how-to/deploy.md), then: make done STEP=deploy"); return 1; }
 }
+check_cloud()    { stamp_check cloud "$(code_hash)" "run: make cloud-oneshot (or make cloud-up, then make cloud-test) — cloud-infra/README.md; no cloud account: make skip STEP=cloud"; }
 
 json_str() { local s="${1//\\/\\\\}"; s="${s//\"/\\\"}"; printf '"%s"' "$s"; }
 emit() { # n part id title status part1_complete part1_just_completed
   if [ $JSON = 1 ]; then
-    printf '{"step":%s,"of":13,"part":%s,"id":"%s","title":%s,"status":"%s","part1_complete":%s,"part1_just_completed":%s,"detail":[' \
+    printf '{"step":%s,"of":14,"part":%s,"id":"%s","title":%s,"status":"%s","part1_complete":%s,"part1_just_completed":%s,"detail":[' \
       "$1" "$2" "$3" "$(json_str "$4")" "$5" "$6" "$7"
     local first=1 d; for d in ${DETAIL[@]+"${DETAIL[@]}"}; do [ $first = 1 ] || printf ','; json_str "$d"; first=0; done; printf ']}\n'
   else
     [ "$5" = complete ] && { echo "All steps complete."; return; }
     [ "$7" = true ] && echo "Part 1 complete — your app runs on a three-node cluster."
-    echo "Step $1/13 · Part $2 · $4 → WHAT-NEXT.md \"Step $1\""
+    echo "Step $1/14 · Part $2 · $4 → WHAT-NEXT.md \"Step $1\""
     echo "  status: $5"
     local d; for d in ${DETAIL[@]+"${DETAIL[@]}"}; do echo "  - $d"; done
   fi
@@ -128,4 +130,4 @@ for s in "${STEPS[@]}"; do
 done
 DETAIL=(${notes[@]+"${notes[@]}"})
 # shellcheck disable=SC1010  # "done" here is the emit() id argument, not the loop keyword
-emit 13 2 done "All steps complete" complete true false
+emit 14 2 done "All steps complete" complete true false

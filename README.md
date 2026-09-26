@@ -104,8 +104,8 @@ project's `BASE_PORT`.
 
 ## With an agent, or without one
 
-The tutor is [`WHAT-NEXT.md`](WHAT-NEXT.md): thirteen steps, from running the
-skeleton to deploying your own app on three machines. Each step says what to
+The tutor is [`WHAT-NEXT.md`](WHAT-NEXT.md): fourteen steps, from running the
+skeleton to testing your own app on three cloud hosts. Each step says what to
 do yourself and what to ask an agent, and ends in a check that `make next`
 runs.
 
@@ -148,6 +148,14 @@ runs.
 | `upgrade-drill` | the pinned upgrade on the local cluster (asks first: one-way door) |
 | `package` | deploy bundle: `make package HOSTS=ip0,ip1,ip2` |
 | `uc-upgrade` | move to another UC release: `make uc-upgrade VERSION=x` |
+| `cloud-up` | 3 cloud hosts + deploy (billable; asks first) — cloud-infra/README.md |
+| `cloud-deploy` | rebuild + redeploy the app, same FSM_VERSION only |
+| `cloud-test` | demo, MTU and a host failover on the cloud cluster |
+| `cloud-bench` | load it: `make cloud-bench DURATION=10 INFLIGHT=32` |
+| `cloud-status` | hosts, uptime vs ttl_hours, leader, /readyz |
+| `cloud-logs` | `make cloud-logs HOST=0 PROC=node\|service\|gateway` |
+| `cloud-destroy` | tear the cloud hosts down |
+| `cloud-oneshot` | up, test, destroy |
 
 `scripts/cluster.sh` does the finer work (run it with no arguments for its
 usage): stop, kill or start one process, print the leader, run `uc2ctl`
@@ -175,6 +183,7 @@ against one node, fetch one node's metrics, print the cluster's directory.
 | `AGENTS.md`, `CLAUDE.md`, `.claude/` | the agent kit |
 | `.devcontainer/` | the container path for macOS and Windows |
 | `compose.yml`, `Dockerfile` | the optional, disposable containerized demo cluster |
+| `cloud-infra/` | three cloud hosts for this app: Terraform, Ansible and the scripts behind make cloud-* |
 
 ## Ports and where state lives
 

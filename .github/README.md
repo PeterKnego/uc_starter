@@ -34,14 +34,15 @@ running the skeleton app, drives it through the gateways until it prints
 
 - **A working skeleton**: a small key-value registry with its service, client,
   unit, property and three-node cluster tests.
-- **A tutor**: [`WHAT-NEXT.md`](../WHAT-NEXT.md), thirteen steps from running
-  the skeleton to deploying your own app on three machines. `make next` works
+- **A tutor**: [`WHAT-NEXT.md`](../WHAT-NEXT.md), fourteen steps, from running
+  the skeleton to testing your own app on three cloud hosts. `make next` works
   out from the repo which step you are on.
 - **An agent kit**: [`AGENTS.md`](../AGENTS.md) for any coding agent; Claude
   Code also gets skills, a reviewer subagent and an edit hook that flags
   determinism hazards.
 - **The operational drills**: failover, snapshots, diff-replay upgrade checks,
   pinned upgrades and deployment packaging, all through `make`.
+- **Cloud in one command**: `make cloud-oneshot` puts the app on three Hetzner, AWS or GCP hosts, tests a real host failover, and tears them down — or ask your agent, which asks before spending money.
 
 The generated project's own README — prerequisites, make targets, ports, the
 project map — is [`README.md`](../README.md) in this repository.

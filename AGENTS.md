@@ -27,7 +27,7 @@ committed commands in the same order, so `apply` must be deterministic.
 | `scripts/` | cluster, tutor, drills, packaging; reach them through `make`. `scripts/demo.sh` and `scripts/probe.sh` (the drills' write and read) are the app's own |
 | `Makefile` | the one entry point |
 | `upgrade/intent.toml.example` | the diff-replay declaration starter |
-| `WHAT-NEXT.md` | the tutor path: 13 steps, each with Goal, Why, Do it yourself, Ask the agent, Done when, Common mistakes |
+| `WHAT-NEXT.md` | the tutor path: 14 steps, each with Goal, Why, Do it yourself, Ask the agent, Done when, Common mistakes |
 | `docs/` | `app-design.md` (the spec the code is held to), `concepts.md`, `how-to/`, `troubleshooting.md`, `ai-engineering.md` |
 | `.devcontainer/` | the macOS/Windows path: Rust + MSRV toolchains, `cosign`, `cargo-generate`, Claude Code |
 | `compose.yml`, `Dockerfile` | optional, disposable containerized 3-node cluster (README § Containers) |
