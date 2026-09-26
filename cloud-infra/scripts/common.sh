@@ -40,7 +40,7 @@ cidr_hint() {
 }
 hssh() { # N CMD… → run CMD on host N; SSH failure (exit 255) dies with the CIDR hint
   local n="$1" rc; shift
-  mkdir -p "$SECRETS"
+  mkdir -p "$SECRETS" && chmod 700 "$SECRETS"
   ssh -i "$SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
       -o UserKnownHostsFile="$SECRETS/known_hosts" -o ConnectTimeout="${CLOUD_SSH_TIMEOUT:-10}" \
       -o LogLevel=ERROR "$SSH_USER@$(pub "$n")" "$@"

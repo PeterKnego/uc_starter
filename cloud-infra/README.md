@@ -48,9 +48,9 @@ the chosen cloud's variables, as bare `KEY=value` — no quotes needed, and any
 quotes present are stripped before Terraform sees them. Only one cloud's
 credentials are needed at a time.
 
-`make -C cloud-infra env-show` (or `make cloud-env-show`) prints which
-variables are set and their length, never their value, so you can check
-credentials are wired up without ever printing a secret.
+`make -C cloud-infra env-show` prints which variables are set and their
+length, never their value, so you can check credentials are wired up
+without ever printing a secret.
 
 ## terraform.tfvars
 

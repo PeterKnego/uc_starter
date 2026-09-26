@@ -102,7 +102,14 @@ out="$(cmk destroy 2>&1)" || fail "destroy with no state failed: $out"
 echo "$out" | grep -q 'nothing to destroy' || fail "destroy with no state: $out"
 [ ! -e cloud-infra/.secrets/admin.key ] && [ ! -e cloud-infra/inventory/hosts.yml ] || fail "destroy left local cluster files"
 mkdir -p cloud-infra/terraform; printf '{"version":4,"resources":[]}\n' >cloud-infra/terraform/terraform.tfstate
-cmk destroy 2>&1 | grep -q 'nothing to destroy' || fail "destroy with an empty state"
-rm -f cloud-infra/terraform/terraform.tfstate cloud-infra/terraform.tfvars
+out="$(cmk destroy 2>&1)"; echo "$out" | grep -q 'nothing to destroy' || fail "destroy with an empty state: $out"
+# destroy with a corrupt state: refuses, terraform never called, local files kept
+mkdir -p cloud-infra/.secrets; : >cloud-infra/.secrets/admin.key; : >cloud-infra/inventory/hosts.env
+printf 'not json' >cloud-infra/terraform/terraform.tfstate
+out="$(cmk destroy 2>&1)" && fail "destroy accepted an unreadable terraform.tfstate"
+echo "$out" | grep -q 'nothing was destroyed' || fail "corrupt state: $out"
+[ -e cloud-infra/inventory/hosts.env ] || fail "destroy removed hosts.env for a state it could not read"
+[ -e cloud-infra/.secrets/admin.key ] || fail "destroy removed admin.key for a state it could not read"
+rm -f cloud-infra/terraform/terraform.tfstate cloud-infra/.secrets/admin.key cloud-infra/inventory/hosts.env cloud-infra/terraform.tfvars
 
 echo "cloud: PASS"
