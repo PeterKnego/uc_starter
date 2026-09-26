@@ -112,4 +112,20 @@ echo "$out" | grep -q 'nothing was destroyed' || fail "corrupt state: $out"
 [ -e cloud-infra/.secrets/admin.key ] || fail "destroy removed admin.key for a state it could not read"
 rm -f cloud-infra/terraform/terraform.tfstate cloud-infra/.secrets/admin.key cloud-infra/inventory/hosts.env cloud-infra/terraform.tfvars
 
+# --- Task 7: deploy — guards and playbook syntax
+g() { bash -c ". cloud-infra/scripts/common.sh; $1" 2>&1; }
+g 'fsm_guard_decide 1.0.0 1.0.0' >/dev/null || fail "fsm guard refused the same version"
+out="$(g 'fsm_guard_decide 1.0.0 1.1.0')" && fail "fsm guard accepted 1.0.0 → 1.1.0"
+echo "$out" | grep -q 'make cloud-destroy' || fail "fsm guard message: $out"
+out="$(g 'fsm_guard_decide "" 1.0.0')" && fail "fsm guard accepted an unreadable running version"
+g 'uc_guard_decide "uc2-node 2.13.0" 2.13.0' >/dev/null || fail "uc guard refused the same UC"
+out="$(g 'uc_guard_decide "uc2-node 2.12.0" 2.13.0')" && fail "uc guard accepted a UC change"
+if command -v ansible-playbook >/dev/null; then
+  printf 'all:\n  children:\n    cluster:\n      hosts:\n        n0: {node_id: "0", private_ip: 10.10.1.10}\n' >"$OUT/inv.yml"
+  for pb in deploy serve; do
+    ANSIBLE_CONFIG=cloud-infra/ansible/ansible.cfg ansible-playbook -i "$OUT/inv.yml" --syntax-check cloud-infra/ansible/$pb.yml >/dev/null \
+      || fail "ansible syntax: $pb.yml"
+  done
+else echo "note: ansible not installed — playbook syntax not checked"; fi
+
 echo "cloud: PASS"

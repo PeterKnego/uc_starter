@@ -1,0 +1,17 @@
+# serve.yml — services, then gateways (a serving leader exists: wait-leader.sh).
+# restart=true (cloud-deploy): one host at a time, same FSM_VERSION only.
+- name: Services and gateways
+  hosts: cluster
+  become: true
+  serial: "{{ 1 if (restart | default(false) | bool) else 3 }}"
+  tasks:
+    - name: The service
+      ansible.builtin.systemd:
+        name: "uc2-service@{{ app_name }}-service"
+        enabled: true
+        state: "{{ 'restarted' if (restart | default(false) | bool) else 'started' }}"
+    - name: The gateway
+      ansible.builtin.systemd:
+        name: uc2-gateway
+        enabled: true
+        state: started

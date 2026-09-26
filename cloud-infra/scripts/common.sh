@@ -48,3 +48,16 @@ hssh() { # N CMD… → run CMD on host N; SSH failure (exit 255) dies with the 
   [ $rc = 255 ] && die "$(cidr_hint "$n")"
   return $rc
 }
+# cloud-deploy restarts services one at a time onto the new build. That is
+# only a rolling restart when row 0 already runs this FSM_VERSION; anything
+# else is an FSM upgrade with no pin (AGENTS.md rule 4) — refuse.
+fsm_guard_decide() { # RUNNING SOURCE
+  [ -n "$1" ] || die "cannot read the FSM version row 0 runs (uc2ctl status on node0) — make cloud-status, make cloud-logs HOST=0 PROC=node"
+  [ "$1" = "$2" ] && return 0
+  die "the cluster runs FSM $1 and src/identity.rs says $2: a rolling restart onto a new state machine is an unpinned upgrade (AGENTS.md rule 4). Disposable cluster: make cloud-destroy, then make cloud-up. A cluster you keep: the pinned upgrade (WHAT-NEXT.md Step 12)."
+}
+# A new UC release is a whole-cluster stop and start (docs/how-to/upgrade-uc.md).
+uc_guard_decide() { # "uc2-node <version>" UC_VERSION
+  case "$1" in *" $2"|*" $2 "*|*"$2") return 0 ;; esac
+  die "node0 runs '$1' but UC_VERSION is $2: a UC upgrade is a whole-cluster stop and start — make cloud-destroy, then make cloud-up (or docs/how-to/upgrade-uc.md for a cluster you keep)."
+}
