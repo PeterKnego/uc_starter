@@ -1,21 +1,30 @@
 #!/usr/bin/env bash
-# package.sh — a deploy bundle for three hosts (WHAT-NEXT.md, Step 13):
-#   make package HOSTS=ip0,ip1,ip2
+# package.sh — a deploy bundle for three hosts (WHAT-NEXT.md, Steps 13–14):
+#   make package HOSTS=ip0,ip1,ip2 [GATEWAYS=pub0,pub1,pub2]
 # writes dist/<app>-<version>-<arch>.tar.gz: the binaries, the systemd units,
-# and a node.toml + gateway.toml per host. See docs/how-to/deploy.md.
+# and a node.toml + gateway.toml per host (hosts/<HOSTS[i]>/). See
+# docs/how-to/deploy.md.
+#   GATEWAYS  the addresses clients reach the gateways on (a cloud's public IPs).
+#             Given, each gateway listens on 0.0.0.0 and [[members]] names these.
 # shellcheck source=scripts/lib.sh
 . "$(dirname "$0")/lib.sh"
 set -e   # a failed cp/sed/tar must not leave a bundle that looks complete
 OFF=0   # a deploy never uses the local cluster's port offset
-IFS=, read -r -a H <<<"${HOSTS:-}"
-[ "${#H[@]}" = 3 ] || die "HOSTS needs exactly three addresses: make package HOSTS=ip0,ip1,ip2"
-for h in "${H[@]}"; do
-  case "$h" in
-    *:*) die "'$h' looks like an IPv6 address — this bundle supports IPv4 addresses (or host names) only" ;;
-    ''|0.0.0.0|*[!0-9A-Za-z.-]*) die "'$h' is not a host address (each node binds exactly its own address, never 0.0.0.0)" ;;
-  esac
-done
-[ "$(printf '%s\n' "${H[@]}" | sort -u | wc -l)" = 3 ] || die "HOSTS must be three different machines"
+parse_three() { # NAME VALUE → PARSED=(three distinct host addresses), or die
+  local name="$1" h
+  [ -n "$2" ] || die "$name needs exactly three addresses: make package $name=ip0,ip1,ip2"
+  PARSED=(); IFS=, read -r -a PARSED <<<"$2"
+  [ "${#PARSED[@]}" = 3 ] || die "$name needs exactly three addresses: make package $name=ip0,ip1,ip2"
+  for h in "${PARSED[@]}"; do
+    case "$h" in
+      *:*) die "$name: '$h' looks like an IPv6 address — this bundle supports IPv4 addresses (or host names) only" ;;
+      ''|0.0.0.0|*[!0-9A-Za-z.-]*) die "$name: '$h' is not a host address (each node binds exactly its own address, never 0.0.0.0)" ;;
+    esac
+  done
+  [ "$(printf '%s\n' "${PARSED[@]}" | sort -u | wc -l | tr -d ' ')" = 3 ] || die "$name must be three different machines"
+}
+parse_three HOSTS "${HOSTS:-}"; H=("${PARSED[@]}")
+G=(); if [ -n "${GATEWAYS:-}" ]; then parse_three GATEWAYS "$GATEWAYS"; G=("${PARSED[@]}"); fi
 for b in uc2-node uc2ctl uc2-gateway; do [ -x "$UC_BIN/$b" ] || die "$UC_BIN/$b is missing — run make bins"; done
 [ -f docs/how-to/deploy.md ] || die "docs/how-to/deploy.md is missing"
 cargo build --release -q || exit 1
@@ -30,7 +39,7 @@ sed "s|^ExecStart=.*|ExecStart=/usr/local/bin/%i --instance-dir $INSTANCE --app-
 for i in 0 1 2; do
   mkdir -p "$D/hosts/${H[$i]}"
   render_node_toml deploy "$i" "$INSTANCE" /etc/uc2/admin/admin.key "${H[@]}" >"$D/hosts/${H[$i]}/node.toml"
-  render_gateway_toml "$i" "$INSTANCE" "${H[@]}" >"$D/hosts/${H[$i]}/gateway.toml"
+  render_gateway_toml "$i" "$INSTANCE" "${H[@]}" ${G[@]+"${G[@]}"} >"$D/hosts/${H[$i]}/gateway.toml"
 done
 cp docs/how-to/deploy.md "$D/DEPLOY.md"
 tar czf "$D.tar.gz" -C dist "$(basename "$D")"

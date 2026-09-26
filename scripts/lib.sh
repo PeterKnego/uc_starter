@@ -72,7 +72,12 @@ progress_skipped() { [ -f "$PROGRESS" ] && grep -qE "^skip $1( |$)" "$PROGRESS";
 # renders the local cluster from these, scripts/package.sh the deploy bundle.
 #
 #   render_node_toml PROFILE ID INSTANCE_DIR ADMIN_KEY HOST0 HOST1 HOST2
-#   render_gateway_toml ID INSTANCE_DIR HOST0 HOST1 HOST2
+#   render_gateway_toml ID INSTANCE_DIR HOST0 HOST1 HOST2 [PUB0 PUB1 PUB2]
+#
+# With PUB0..2 (a cloud: clients reach the gateways on public addresses that
+# are not on the interface on every cloud) the gateway listens on 0.0.0.0 and
+# [[members]] names the public addresses — REDIRECT and LEADER_CHANGED send
+# clients to them, so they must be the ones clients can reach.
 #
 # PROFILE is `local` (one host, small journal geometry so purge is visible,
 # crypto off) or `deploy` (one node per host, default geometry, crypto ON with
@@ -148,17 +153,22 @@ EOT
 
 render_gateway_toml() {
   local id="$1" dir="$2"; shift 2
-  local hosts=("$@") i
-  [ "${#hosts[@]}" = 3 ] || die "render_gateway_toml: need three hosts"
+  local hosts=("$@") i listen
+  local -a reach
+  case "${#hosts[@]}" in
+    3) reach=("${hosts[0]}" "${hosts[1]}" "${hosts[2]}"); listen="${hosts[$id]}" ;;
+    6) reach=("${hosts[3]}" "${hosts[4]}" "${hosts[5]}"); listen=0.0.0.0 ;;
+    *) die "render_gateway_toml: need three hosts, or three hosts and three public addresses" ;;
+  esac
   cat <<EOT
 [local]
 instance_dir = "$dir"
 app_id = "$APP_ID"
-listen = "${hosts[$id]}:$(GW_PORT "$id")"
+listen = "$listen:$(GW_PORT "$id")"
 
 EOT
   for i in 0 1 2; do
-    printf '[[members]]\nnode_id = %s\ngateway = "%s:%s"\n\n' "$i" "${hosts[$i]}" "$(GW_PORT "$i")"
+    printf '[[members]]\nnode_id = %s\ngateway = "%s:%s"\n\n' "$i" "${reach[$i]}" "$(GW_PORT "$i")"
   done
   cat <<'EOT'
 [limits]

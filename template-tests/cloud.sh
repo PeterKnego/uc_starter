@@ -29,4 +29,19 @@ lib "verify_sha256 '$OUT/SUMS' '$OUT/x.tar.gz'" || fail "verify_sha256 refused a
 [ "$(lib app_bin_dir)" = "$(lib app_target_dir)/release" ] || fail "app_bin_dir is not app_target_dir/release"
 grep -q 'UC_CLIENT' scripts/demo.sh || fail "demo.sh has no UC_CLIENT override"
 
+# --- Task 2: public gateway addresses
+diff <(lib 'render_gateway_toml 0 /srv/uc2/demo-app 10.0.0.1 10.0.0.2 10.0.0.3') "$HERE/fixtures/gateway-0.toml" \
+  || fail "gateway.toml without GATEWAYS is not byte-identical to before"
+g="$(lib 'render_gateway_toml 1 /srv/uc2/demo-app 10.0.0.1 10.0.0.2 10.0.0.3 203.0.113.1 203.0.113.2 203.0.113.3')"
+echo "$g" | grep -qx 'listen = "0.0.0.0:7101"' || fail "with public addresses the gateway must listen on 0.0.0.0"
+for i in 0 1 2; do echo "$g" | grep -qx "gateway = \"203.0.113.$((i+1)):710$i\"" || fail "member $i is not its public address"; done
+echo "$g" | grep -q '10.0.0' && fail "a private address leaked into gateway.toml members"
+out="$(HOSTS=10.0.0.1,10.0.0.2,10.0.0.3 GATEWAYS=1.2.3.4,1.2.3.4,5.6.7.8 scripts/package.sh 2>&1)" && fail "duplicate GATEWAYS accepted"
+echo "$out" | grep -q 'GATEWAYS must be three different' || fail "duplicate GATEWAYS: wrong message: $out"
+out="$(HOSTS=10.0.0.1,10.0.0.2,10.0.0.3 GATEWAYS=0.0.0.0,1.2.3.4,5.6.7.8 scripts/package.sh 2>&1)" && fail "GATEWAYS 0.0.0.0 accepted"
+make -s bins >/dev/null
+b="$(HOSTS=10.0.0.1,10.0.0.2,10.0.0.3 GATEWAYS=203.0.113.1,203.0.113.2,203.0.113.3 scripts/package.sh | head -1)"
+tar xzf "$b" -O "$(basename "$b" .tar.gz)/hosts/10.0.0.1/gateway.toml" | grep -qx 'gateway = "203.0.113.1:7100"' || fail "bundle gateway.toml lacks the public member"
+tar xzf "$b" -O "$(basename "$b" .tar.gz)/hosts/10.0.0.1/node.toml" | grep -qx 'bind = "10.0.0.1:7000"' || fail "bundle node.toml must bind the private address"
+
 echo "cloud: PASS"

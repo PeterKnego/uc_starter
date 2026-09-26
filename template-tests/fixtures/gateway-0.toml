@@ -1,0 +1,25 @@
+[local]
+instance_dir = "/srv/uc2/demo-app"
+app_id = "demo"
+listen = "10.0.0.1:7100"
+
+[[members]]
+node_id = 0
+gateway = "10.0.0.1:7100"
+
+[[members]]
+node_id = 1
+gateway = "10.0.0.2:7101"
+
+[[members]]
+node_id = 2
+gateway = "10.0.0.3:7102"
+
+[limits]
+# The client's exposure window to a node that died under this gateway.
+request_timeout_ms = 2000
+
+# The service runs Sessioned<Fsm>: the envelope is what makes a re-sent write
+# answer "replayed" instead of applying twice.
+[session]
+envelope = true
