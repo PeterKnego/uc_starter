@@ -75,4 +75,34 @@ if command -v terraform >/dev/null; then
   rm -rf cloud-infra/terraform/.terraform cloud-infra/terraform/.terraform.lock.hcl
 else echo "note: terraform not installed — terraform checks skipped"; fi
 
+# --- Task 6: control surface (no cloud: fake terraform that must not run)
+FAKE="$OUT/fakebin"; mkdir -p "$FAKE"
+printf '#!/bin/sh\necho "terraform must not run here" >&2; exit 1\n' >"$FAKE/terraform"
+for t in ansible-playbook ansible; do printf '#!/bin/sh\nexit 0\n' >"$FAKE/$t"; done
+chmod +x "$FAKE"/*
+cmk() { env -u HCLOUD_TOKEN PATH="$FAKE:$PATH" make -s -C cloud-infra "$@"; }
+out="$(cmk preflight 2>&1)" && fail "preflight passed without terraform.tfvars"
+echo "$out" | grep -q 'cp cloud-infra/example.tfvars' || fail "preflight without tfvars: $out"
+cp cloud-infra/example.tfvars cloud-infra/terraform.tfvars
+printf '#!/bin/sh\necho '"'"'{"terraform_version":"1.6.0"}'"'"'\n' >"$FAKE/terraform"; chmod +x "$FAKE/terraform"
+out="$(cmk preflight 2>&1)" && fail "preflight accepted terraform 1.6"
+echo "$out" | grep -q 'need 1.7' || fail "old terraform: $out"
+printf '#!/bin/sh\necho '"'"'{"terraform_version":"1.9.8"}'"'"'\n' >"$FAKE/terraform"; chmod +x "$FAKE/terraform"
+out="$(cmk preflight 2>&1)" && fail "preflight passed without HCLOUD_TOKEN"
+echo "$out" | grep -q 'HCLOUD_TOKEN' || fail "missing token: $out"
+printf 'HCLOUD_TOKEN="abc"\n' >cloud-infra/.env
+cmk env-show | grep -qx 'HCLOUD_TOKEN: set (3 chars)' || fail ".env quotes not stripped: $(cmk env-show)"
+cmk env-show | grep -q 'abc' && fail "env-show printed a secret"
+cmk env-show | grep -qE "^owner: demo-app-[a-z0-9-]+$" || fail "owner: $(cmk env-show)"
+rm cloud-infra/.env
+# destroy with no state: nothing to destroy, terraform not called, local files cleared
+printf '#!/bin/sh\necho "terraform must not run here" >&2; exit 1\n' >"$FAKE/terraform"; chmod +x "$FAKE/terraform"
+mkdir -p cloud-infra/.secrets; : >cloud-infra/.secrets/admin.key; : >cloud-infra/inventory/hosts.yml; : >cloud-infra/inventory/hosts.env
+out="$(cmk destroy 2>&1)" || fail "destroy with no state failed: $out"
+echo "$out" | grep -q 'nothing to destroy' || fail "destroy with no state: $out"
+[ ! -e cloud-infra/.secrets/admin.key ] && [ ! -e cloud-infra/inventory/hosts.yml ] || fail "destroy left local cluster files"
+mkdir -p cloud-infra/terraform; printf '{"version":4,"resources":[]}\n' >cloud-infra/terraform/terraform.tfstate
+cmk destroy 2>&1 | grep -q 'nothing to destroy' || fail "destroy with an empty state"
+rm -f cloud-infra/terraform/terraform.tfstate cloud-infra/terraform.tfvars
+
 echo "cloud: PASS"
