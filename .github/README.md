@@ -18,7 +18,7 @@ either Linux (x86-64 or aarch64) with [rustup](https://rustup.rs) or Docker for
 the devcontainer (the path on macOS and Windows: UC nodes run on Linux only).
 
 ```bash
-cargo generate --git https://github.com/PeterKnego/uc_starter
+cargo generate --git https://github.com/PeterKnego/uc_starter   # add --tag v2.13.0 to pin a UC release
 cd <your-project>
 make bins up demo
 make next
