@@ -44,4 +44,27 @@ b="$(HOSTS=10.0.0.1,10.0.0.2,10.0.0.3 GATEWAYS=203.0.113.1,203.0.113.2,203.0.113
 tar xzf "$b" -O "$(basename "$b" .tar.gz)/hosts/10.0.0.1/gateway.toml" | grep -qx 'gateway = "203.0.113.1:7100"' || fail "bundle gateway.toml lacks the public member"
 tar xzf "$b" -O "$(basename "$b" .tar.gz)/hosts/10.0.0.1/node.toml" | grep -qx 'bind = "10.0.0.1:7000"' || fail "bundle node.toml must bind the private address"
 
+# --- Task 3: target architecture
+out="$(HOSTS=10.0.0.1,10.0.0.2,10.0.0.3 ARCH=sparc scripts/package.sh 2>&1)" && fail "ARCH=sparc accepted"
+echo "$out" | grep -q 'ARCH must be x86_64 or aarch64' || fail "ARCH=sparc: wrong message: $out"
+out="$(scripts/fetch-uc.sh --arch sparc 2>&1)" && fail "fetch-uc --arch sparc accepted"
+mach="$(uname -m)"; [ "$mach" = arm64 ] && mach=aarch64
+other=aarch64; [ "$mach" = aarch64 ] && other=x86_64
+scripts/fetch-uc.sh --arch "$other" >/dev/null
+file -b .uc/dist/$other/bin/uc2-node | grep -q "ELF 64-bit" || fail ".uc/dist/$other/bin/uc2-node is not an ELF"
+[ "$(cat .uc/dist/$other/VERSION)" = "$(cat UC_VERSION)" ] || fail ".uc/dist/$other/VERSION"
+scripts/fetch-uc.sh --arch "$other" | grep -q already || fail "second fetch-uc --arch re-downloaded"
+[ -x .uc/bin/uc2-node ] || fail "fetch-uc --arch touched .uc/bin"
+if command -v cargo-zigbuild >/dev/null; then
+  b="$(HOSTS=10.0.0.1,10.0.0.2,10.0.0.3 ARCH=$other scripts/package.sh | head -1)"
+  case "$b" in *"-$other.tar.gz") ;; *) fail "bundle name does not carry ARCH: $b" ;; esac
+  x="$OUT/x-$other"; rm -rf "$x"; mkdir -p "$x"; tar xzf "$b" -C "$x"
+  want='x86-64'; [ "$other" = aarch64 ] && want='aarch64'
+  for f in "$x"/*/bin/*; do file -b "$f" | grep -q "ELF 64-bit.*$want" || fail "$(basename "$f") in the $other bundle: $(file -b "$f")"; done
+  tar tzf "$b" | grep -q '/\._' && fail "AppleDouble ._ files in the bundle"
+elif [ "${CLOUD_REQUIRE_CROSS:-0}" = 1 ]; then fail "cargo-zigbuild missing and CLOUD_REQUIRE_CROSS=1"
+else echo "note: cargo-zigbuild not installed — cross build not checked"; fi
+b="$(HOSTS=10.0.0.1,10.0.0.2,10.0.0.3 scripts/package.sh | head -1)"
+case "$b" in *"-$mach.tar.gz") ;; *) fail "default ARCH is not this machine's: $b" ;; esac
+
 echo "cloud: PASS"
