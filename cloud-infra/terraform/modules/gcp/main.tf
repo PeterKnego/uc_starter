@@ -1,6 +1,13 @@
 # GOOGLE_PROJECT and GOOGLE_APPLICATION_CREDENTIALS come from the environment.
+data "google_compute_zones" "up" {
+  region = var.region
+  status = "UP"
+}
+
 locals {
-  zone  = "${var.region}-a"
+  # Not every region has an "-a" zone (us-east1, europe-west1); try() keeps
+  # plans working where the data source has no names yet (mock providers).
+  zone  = try(sort(data.google_compute_zones.up.names)[0], "${var.region}-a")
   image = var.arch == "aarch64" ? "ubuntu-os-cloud/ubuntu-2404-lts-arm64" : "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
 }
 
