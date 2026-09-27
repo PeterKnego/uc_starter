@@ -6,7 +6,8 @@ include = ["Cargo.toml", "uc-app.env", "src/identity.rs", "README.md"]
 # LICENSE is the template's own (MIT-0); a generated project picks its own license.
 # .github/README.md is the template's GitHub landing page (GitHub shows it before
 # the root README.md, whose {{project-name}} heading is for generated projects).
-ignore = [".github/workflows/template-ci.yml", ".github/workflows/cloud-e2e.yml", "template-tests", "hooks", "target", ".uc", "LICENSE", ".github/README.md"]
+# WHAT-NEXT.md only redirects old links on the template's own GitHub page.
+ignore = [".github/workflows/template-ci.yml", ".github/workflows/cloud-e2e.yml", "template-tests", "hooks", "target", ".uc", "LICENSE", ".github/README.md", "WHAT-NEXT.md"]
 
 [hooks]
 pre = ["hooks/validate.rhai"]
