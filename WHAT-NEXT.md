@@ -317,7 +317,8 @@ and [the remote protocol](https://github.com/PeterKnego/ultima_cluster/blob/v2.1
 2. Give read subcommands a `--linearizable` flag, like the skeleton's `get`.
 3. In `scripts/demo.sh`, rewrite the `expect` lines for your commands. Keep the shape: a description, a substring the output must contain, then the arguments.
 4. In `scripts/probe.sh`, rewrite `probe_write`, `probe_read` and `probe_expect`: one write your app accepts and the linearizable read that shows it. The Part-2 drills (Steps 10 and 12) use exactly these, and `make demo` checks them.
-5. Delete the TODO marker lines in `src/bin/client.rs`, `scripts/demo.sh` and `scripts/probe.sh`.
+5. The client's `bench` subcommand (make cloud-bench) sends `bench_command` in src/bin/client.rs; change it to your app's most common write, and delete its TODO marker.
+6. Delete the TODO marker lines in `src/bin/client.rs`, `scripts/demo.sh` and `scripts/probe.sh`.
 6. `make check`. You edited `src/`, so Step 7's proof is stale until you re-run it.
 7. If you changed `Command` since this cluster was started, start the local cluster fresh: `make up FRESH=1` (it deletes the nodes' state, logs and pids; code and `.uc/state` stay).
 8. `make restart-services`. It rebuilds, then restarts your service on every node.
@@ -510,6 +511,7 @@ and [Encrypt traffic between nodes](https://github.com/PeterKnego/ultima_cluster
 3. On each host, following `docs/how-to/deploy.md`: install the binaries, that host's configs under `/etc/uc2/`, and the units. Start the node on every host, then the services, then the gateways.
 4. On a node host, check `uc2ctl status` and `/readyz`. Point your client at all three gateways.
 5. `make done STEP=deploy`.
+6. Or let Step 14 do all of this on cloud hosts: make skip STEP=deploy, then Step 14.
 
 **Ask the agent.** > "Package the app for these three hosts and give me the exact per-host install commands, in order."
 
@@ -521,3 +523,40 @@ deployment with `make done STEP=deploy`.
 - Setting a node's `bind` to `0.0.0.0`, or to anything but its own `[[members]]` address. The node refuses to start. Use the exact address its peers reach.
 - Editing `[[members]]` to change membership on a running cluster. After the first boot it is only a seed. Add or remove members with `uc2ctl`.
 - Leaving `[crypto] enabled = false` on a network you do not control. Node traffic, and forwarded admin requests, cross it in the clear.
+
+### Step 14 — Test on three cloud hosts
+<!-- step: cloud -->
+
+**Goal.** Run your app on three cloud hosts, prove it keeps serving when one host's node goes down, measure it, and tear it down.
+
+**Why.** A cluster on one machine, or on three machines behind one power strip,
+has never lost a machine. On three cloud hosts the private network, the
+firewall and the clocks are real: nodes replicate over private addresses,
+clients reach gateways on public ones (the gateway `[[members]]` map is what
+`REDIRECT` and `LEADER_CHANGED` send clients to, so it must name addresses they
+can reach), and stopping the leader's node forces a real election across hosts.
+`cloud-infra/` does Step 13's work for you — keys, allowlist, admin key, the
+start order — so what you watch is the behaviour, not the plumbing. See
+[Run a gateway](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/run-a-gateway.md)
+and [Run a cluster on real hosts](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/run-a-cluster.md).
+
+**Do it yourself.**
+1. Pick a cloud and put its credentials in `cloud-infra/.env` (`cp cloud-infra/.env.example cloud-infra/.env`). `make -C cloud-infra cloud-env-show` checks them without printing them.
+2. `cp cloud-infra/example.tfvars cloud-infra/terraform.tfvars`; set your SSH key and `allow_ssh_cidr` to your IP/32.
+3. `make cloud-oneshot`: it creates the hosts, deploys, runs `make cloud-test` and destroys them. Or step by step: `make cloud-up`, `make cloud-test`, `make cloud-bench`, `make cloud-status`, then `make cloud-destroy`.
+4. Read the failover part of the test output: which node led, that a write succeeded while it was down, that it came back.
+
+**Ask the agent.** > "Test my app on the cloud." (It states the cost and asks before creating anything.)
+
+**Done when.** `make cloud-test` has passed against a cluster running your
+current code (it records the proof; `make next` shows it). No cloud account:
+`make skip STEP=cloud`.
+
+**Common mistakes.**
+- Leaving the hosts up. They bill until `make cloud-destroy`; `make cloud-status` warns past `ttl_hours`.
+- Changing code after `cloud-up` and expecting `cloud-test` to count: it says "not recorded" until `make cloud-deploy`.
+- `cloud-deploy` after bumping `FSM_VERSION`: it refuses. A disposable cluster: destroy and up. One you keep: Step 12's pinned upgrade.
+- An `arch` that does not match `instance_type`: Terraform refuses before creating anything.
+- Changing `region`, `arch` or the SSH key after `cloud-up`: it would replace the hosts, so `cloud-up` refuses. `make cloud-plan` shows it; `make cloud-up REPLACE=1` if you mean it.
+- Interrupting a run: `cloud-oneshot` destroys on Ctrl-C, but anything else leaves hosts billing — `make cloud-status`, then `make cloud-destroy`.
+- `allow_ssh_cidr = "0.0.0.0/0"`: refused unless you also set `allow_open_cidr = true`.

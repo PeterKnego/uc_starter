@@ -4,7 +4,7 @@ FROM mcr.microsoft.com/devcontainers/rust:1-bookworm
 # Linux-only, so this image is where `make up` actually runs a cluster.
 ARG COSIGN_VERSION=3.1.3
 
-RUN apt-get update && apt-get install -y --no-install-recommends jq iproute2 python3 \
+RUN apt-get update && apt-get install -y --no-install-recommends jq iproute2 python3 file unzip openssh-client python3-pip \
  && rm -rf /var/lib/apt/lists/* \
  && arch="$(dpkg --print-architecture)" \
  && cd /tmp \
@@ -14,6 +14,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends jq iproute2 pyt
  && install -m 0755 "cosign-linux-${arch}" /usr/local/bin/cosign \
  && rm -f "cosign-linux-${arch}" cosign_checksums.txt
 
+# cloud-infra (WHAT-NEXT.md Step 14): terraform, ansible, and zig for cross builds.
+ARG TERRAFORM_VERSION=1.9.8
+RUN arch="$(dpkg --print-architecture)" && cd /tmp \
+ && curl -fsSL -o tf.zip "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_${arch}.zip" \
+ && curl -fsSL -o tf.sums "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_SHA256SUMS" \
+ && grep " terraform_${TERRAFORM_VERSION}_linux_${arch}.zip\$" tf.sums | sed 's/ .*/  tf.zip/' | sha256sum -c - \
+ && unzip -o tf.zip terraform -d /usr/local/bin && rm -f tf.zip tf.sums \
+ && pip3 install --break-system-packages --no-cache-dir ansible-core ziglang
+
 USER vscode
 # rust-toolchain.toml pins 1.96.0 (installs itself via rustup on first build);
 # `make lint` also needs 1.89.0, the MSRV clippy gate (CLAUDE.md's own rule,
@@ -21,6 +30,7 @@ USER vscode
 RUN rustup toolchain install 1.96.0 --profile minimal --component rustfmt --component clippy \
  && rustup toolchain install 1.89.0 --profile minimal --component clippy \
  && cargo install cargo-generate --locked \
+ && cargo install cargo-zigbuild --locked \
  # The devcontainer CLI remaps `vscode`'s uid/gid to match the host user (so
  # the bind-mounted workspace is writable), but $CARGO_HOME/{registry,git}
  # — the two trees `cargo build`/`cargo test` write into at runtime, fetching

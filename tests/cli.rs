@@ -31,6 +31,44 @@ fn oversize_value_is_refused_before_connecting() {
 }
 
 #[test]
+fn bench_refuses_zero_inflight_before_connecting() {
+    let out = Command::new(bin(""))
+        .args(["--gateways", "127.0.0.1:1", "bench", "--inflight", "0"])
+        .output()
+        .unwrap();
+    assert_eq!(
+        out.status.code(),
+        Some(2),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(String::from_utf8_lossy(&out.stderr).contains("--inflight"));
+}
+
+#[test]
+fn bench_refuses_zero_and_overlong_duration_before_connecting() {
+    for duration in ["0", "86401"] {
+        let out = Command::new(bin(""))
+            .args([
+                "--gateways",
+                "127.0.0.1:1",
+                "bench",
+                "--duration-secs",
+                duration,
+            ])
+            .output()
+            .unwrap();
+        assert_eq!(
+            out.status.code(),
+            Some(2),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert!(String::from_utf8_lossy(&out.stderr).contains("--duration-secs"));
+    }
+}
+
+#[test]
 fn bad_gateway_address_is_exit_2() {
     let out = Command::new(bin(""))
         .args(["--gateways", "nocolon", "get", "k"])

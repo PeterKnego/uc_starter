@@ -3,7 +3,9 @@
 # TODO(app): rewrite these calls for your commands (keep the expect checks).
 # shellcheck source=scripts/lib.sh
 . "$(dirname "$0")/lib.sh"
-CLI="$(app_bin_dir)/$APP_NAME"
+# UC_CLIENT: another way to run the client (cloud-infra runs it on a cluster
+# host over SSH); default the local release build.
+CLI="${UC_CLIENT:-$(app_bin_dir)/$APP_NAME}"
 [ -x "$CLI" ] || die "$CLI missing — run make build"
 GW="$(gateways_csv)"
 fails=0

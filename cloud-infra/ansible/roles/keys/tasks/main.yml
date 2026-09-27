@@ -1,0 +1,65 @@
+# Wire crypto: each node's private key is made on its host and never leaves
+# it; the allowlist (public keys only) is the same file on every host.
+- name: Node private key (once; mode 0600)
+  ansible.builtin.shell: umask 077; head -c 32 /dev/urandom > /etc/uc2/node.key
+  args:
+    creates: /etc/uc2/node.key
+  no_log: true
+
+- name: Node public key (the openssl pipeline from docs/how-to/deploy.md)
+  ansible.builtin.shell: |
+    { printf '\060\056\002\001\000\060\005\006\003\053\145\156\004\042\004\040'; cat /etc/uc2/node.key; } \
+      | openssl pkey -inform DER -pubout -outform DER | tail -c 32 | base64
+  args:
+    executable: /bin/bash
+  register: node_pub
+  changed_when: false
+
+- name: Allowlist — every node's public key, node id first
+  ansible.builtin.copy:
+    dest: /etc/uc2/allowlist.toml
+    mode: "0600"
+    content: |
+      {% for h in groups['cluster'] %}
+      {{ hostvars[h].node_id }} {{ hostvars[h].node_pub.stdout }}
+      {% endfor %}
+
+# Admin key: one for the cluster. Made with the installed uc2ctl on node0 the
+# first time, kept in cloud-infra/.secrets/ (gitignored, 0600), pushed to all.
+- name: Is there a local admin key?
+  ansible.builtin.stat:
+    path: "{{ secrets_dir }}/admin.key"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  register: local_admin
+
+- name: Generate the admin key on node0
+  ansible.builtin.command: /usr/local/bin/uc2ctl gen-admin-key /etc/uc2/admin/admin.key
+  args:
+    creates: /etc/uc2/admin/admin.key
+  when: not local_admin.stat.exists and node_id == "0"
+  no_log: true
+
+- name: Fetch it to cloud-infra/.secrets/
+  ansible.builtin.fetch:
+    src: /etc/uc2/admin/admin.key
+    dest: "{{ secrets_dir }}/admin.key"
+    flat: true
+  when: not local_admin.stat.exists and node_id == "0"
+  no_log: true
+
+- name: Local copy is 0600
+  ansible.builtin.file:
+    path: "{{ secrets_dir }}/admin.key"
+    mode: "0600"
+  delegate_to: localhost
+  become: false
+  run_once: true
+
+- name: Admin key on every host
+  ansible.builtin.copy:
+    src: "{{ secrets_dir }}/admin.key"
+    dest: /etc/uc2/admin/admin.key
+    mode: "0600"
+  no_log: true

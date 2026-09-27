@@ -1,0 +1,18 @@
+# deploy.yml — docs/how-to/deploy.md steps 3–5 on every host: install, keys,
+# start the node. serve.yml starts services then gateways once a leader serves.
+# Extra vars (scripts/deploy.sh): app_name app_id bundle bundle_dir bundle_arch secrets_dir
+- name: Install and start the nodes
+  hosts: cluster
+  become: true
+  vars:
+    instance_dir: "/srv/uc2/{{ app_name }}"
+  roles:
+    - install
+    - keys
+  post_tasks:
+    - name: Start the node
+      ansible.builtin.systemd:
+        name: uc2-node
+        enabled: true
+        state: started
+        daemon_reload: true

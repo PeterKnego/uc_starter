@@ -1,0 +1,43 @@
+- name: The bundle is built for this CPU
+  ansible.builtin.assert:
+    that: bundle_arch == ansible_architecture
+    fail_msg: "the bundle is {{ bundle_arch }} but {{ inventory_hostname }} is {{ ansible_architecture }} — set arch in cloud-infra/terraform.tfvars to match the instance type"
+
+- name: Directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /etc/uc2, mode: "0755" }
+    - { path: /etc/uc2/admin, mode: "0700" }
+    - { path: "{{ instance_dir }}", mode: "0750" }
+
+- name: Unpack the bundle
+  ansible.builtin.unarchive:
+    src: "{{ bundle }}"
+    dest: /opt
+
+- name: Binaries (UC, the service, and the client the tests run)
+  ansible.builtin.copy:
+    src: "/opt/{{ bundle_dir }}/bin/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    remote_src: true
+    mode: "0755"
+  loop: [uc2-node, uc2ctl, uc2-gateway, "{{ app_name }}-service", "{{ app_name }}"]
+
+- name: This host's configs (its own private address)
+  ansible.builtin.copy:
+    src: "/opt/{{ bundle_dir }}/hosts/{{ private_ip }}/{{ item }}"
+    dest: "/etc/uc2/{{ item }}"
+    remote_src: true
+    mode: "0644"
+  loop: [node.toml, gateway.toml]
+
+- name: systemd units
+  ansible.builtin.copy:
+    src: "/opt/{{ bundle_dir }}/systemd/{{ item }}"
+    dest: "/etc/systemd/system/{{ item }}"
+    remote_src: true
+    mode: "0644"
+  loop: [uc2-node.service, uc2-gateway.service, uc2-service@.service]

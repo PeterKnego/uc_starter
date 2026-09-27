@@ -11,7 +11,7 @@ at() { scripts/next.sh --json | python3 -c "import json,sys; d=json.load(sys.std
 expect() { local got; got="$(at)"; [ "$got" = "$1" ] || fail "expected '$1', got '$got'"; }
 unmark() { sed -i '/TODO(app)/d' "$@"; }
 
-[ "$(scripts/next.sh --list | tr '\n' ' ')" = "env skeleton concepts design commands state tests client failover snapshots observe upgrade deploy " ] || fail "--list"
+[ "$(scripts/next.sh --list | tr '\n' ' ')" = "env skeleton concepts design commands state tests client failover snapshots observe upgrade deploy cloud " ] || fail "--list"
 # the doc and the checker agree on ids and order
 [ "$(grep -oE '<!-- step: [a-z-]+ -->' WHAT-NEXT.md | sed 's/<!-- step: \(.*\) -->/\1/' | tr '\n' ' ')" = "$(scripts/next.sh --list | tr '\n' ' ')" ] || fail "WHAT-NEXT.md step ids differ from next.sh --list"
 
@@ -107,4 +107,15 @@ if scripts/progress.sh done part1 2>/dev/null; then fail "'part1' accepted as a 
 if scripts/progress.sh done observe 2>/dev/null; then fail "'make done STEP=observe' accepted — only concepts and deploy may be recorded by hand"; fi
 # shellcheck disable=SC1010  # "done" is the verb argument to progress.sh, not the loop keyword
 scripts/progress.sh done deploy >/dev/null || fail "'make done STEP=deploy' refused"
+
+# Step 14 (cloud): proven only by make cloud-test's stamp, never by hand
+scripts/progress.sh skip observe >/dev/null
+scripts/progress.sh skip upgrade >/dev/null
+mkdir -p dist; : >dist/demo-app-0.1.0-x86_64.tar.gz
+expect "cloud todo"
+# shellcheck disable=SC1010  # "done" is the verb argument to progress.sh, not the loop keyword
+if scripts/progress.sh done cloud 2>/dev/null; then fail "'make done STEP=cloud' accepted — cloud is proven by make cloud-test"; fi
+scripts/stamp.sh cloud >/dev/null
+expect "done complete"
+[ "$(scripts/next.sh --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["of"])')" = 14 ] || fail '"of" is not 14'
 echo "tutor: PASS"

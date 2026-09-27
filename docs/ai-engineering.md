@@ -18,9 +18,11 @@ always needs you.
 3. **Plan.** For anything larger than one command, have the agent write the
    steps first: which files, which tests, which checks.
 4. **Implement**, in small diffs.
-5. **Determinism review.** Every diff that touches `src/commands.rs`,
-   `src/state.rs` or `src/snapshot.rs` goes past the `determinism-reviewer`
-   subagent before it is called done.
+5. **Determinism review.** Grep-level hazards are flagged at each edit by
+   the hook. Once per change, before it is committed, a diff that alters code
+   `apply`, `query`, `on_timer`, `freeze` or the snapshot run goes past the
+   `determinism-reviewer` subagent, which catches what a grep cannot
+   (overflow, panics on input, id-series shifts, mid-enum inserts).
 6. **`make check`.** Tests, fmt, clippy, the MSRV clippy and the determinism
    grep. A step is done when its check passes, not when the agent says so.
 7. **Diff replay before any `VERSION` bump.** A behaviour change to a state
@@ -47,6 +49,7 @@ up:
 | `determinism-review` | the checklist: clocks, RNG, hash iteration, floats, overflow, panics in `apply`, changed `ids()` call counts, enum and field order, image compatibility (a new `IMAGE_VERSION` with an old-image reader: `#[serde(default)]` does not let bincode read an old image) |
 | `upgrade-fsm` | the diff-replay judgement: draft the intent declaration, classify the change, attribute the report's residue to a hunk, judge the state at the origin, spot what a lint cannot. Ends by asking before `make upgrade-drill` |
 | `troubleshoot-cluster` | run `make status`, read the process logs, match the named refusal against [troubleshooting](troubleshooting.md), quote the fix; never delete cluster state without asking |
+| `cloud-infra` | deploy, test, bench, check status, log or tear down the app on cloud hosts; states the cost and what will be created, changed or destroyed, and waits for a yes in the conversation before any `cloud-*` command (rule 9 — the agent states the cost and waits for your yes before any cloud command) |
 
 **Subagent** `determinism-reviewer` (`.claude/agents/determinism-reviewer.md`):
 a read-only reviewer that checks a state-machine diff against the
@@ -59,16 +62,18 @@ agent edits a Rust file, it runs `rustfmt` on it and
 `HashMap`) is reported back to the agent at the edit, naming the replacement,
 instead of surfacing later in `make lint`.
 
-**Permissions** (`.claude/settings.json`): routine work runs without prompts
-(`make` targets, `cargo build/check/test/clippy/fmt`, `scripts/next.sh`,
-`scripts/lint-determinism.sh`, cluster status, leader and root, and
-`git status/diff/log`). Anything that can pin an upgrade **always asks you**:
+**Permissions** (`.claude/settings.json`): there is no `allow` list. In auto
+mode the classifier approves routine work (`make`, `cargo`, `git`); in the
+default mode Claude Code asks before anything that is not read-only. Add your
+own allowances in `.claude/settings.local.json`, which is not committed.
+Anything that can pin an upgrade **always asks you**:
 any command that mentions `upgrade-drill`, `UC_CONFIRM_PIN` or
 `upgrade pin`, or runs `.uc/bin/uc2ctl`, asks, even in auto mode. The rules
 match the text anywhere in the command (`Bash(*upgrade-drill*)`,
 `Bash(*UC_CONFIRM_PIN*)`, `Bash(*upgrade pin*)`), so reordered or quoted
 `make` arguments cannot slip past them, and Claude Code checks `ask` rules
-before `allow` rules, so the blanket `make` allowance never covers them. The scripts guard the pin as well: `make
+before `allow` rules and before the auto-mode classifier, so no allowance you
+add can cover them. The scripts guard the pin as well: `make
 upgrade-drill` asks you to type `PIN`, and `scripts/cluster.sh ctl … upgrade
 pin` refuses without `UC_CONFIRM_PIN=yes`. A pin is a one-way door: there is
 no unpin, and the only rollback is the backup taken before it. Any command

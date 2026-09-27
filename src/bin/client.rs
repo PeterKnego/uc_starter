@@ -27,12 +27,13 @@
 //! Exit codes: `0` success, `1` the request failed, `2` bad arguments
 //! (`validate()` refusals included).
 
+use std::collections::VecDeque;
 use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
 use app::{Command, Query, QueryResponse, Response};
 use clap::{Parser, Subcommand};
-use uc_remote::{Consistency, RemoteClient, RemoteConfig, RemoteError};
+use uc_remote::{Consistency, RemoteClient, RemoteConfig, RemoteError, Ticket};
 
 #[derive(Parser)]
 #[command(name = env!("CARGO_BIN_NAME"), about = "Drives the app's cluster through a uc2-gateway")]
@@ -74,6 +75,14 @@ enum Sub {
         #[arg(long)]
         linearizable: bool,
     },
+    /// Load: keep `--inflight` writes outstanding for `--duration-secs` and
+    /// print throughput and latency. cloud-infra's `make cloud-bench` runs it.
+    Bench {
+        #[arg(long, default_value_t = 10)]
+        duration_secs: u64,
+        #[arg(long, default_value_t = 32)]
+        inflight: u32,
+    },
 }
 
 /// Bad arguments (exit 2) vs. a failed request (exit 1). Keeping them apart
@@ -110,13 +119,19 @@ fn gateways(args: &Args) -> Vec<String> {
 /// *timing* condition, not a configuration error. A `Config` refusal is not
 /// retried — it can never start working.
 fn connect(args: &Args, members: &[String], deadline: Instant) -> Result<RemoteClient, Fail> {
+    let defaults = RemoteConfig::default();
+    let max_inflight = match &args.cmd {
+        Sub::Bench { inflight, .. } => (*inflight).max(defaults.max_inflight),
+        _ => defaults.max_inflight,
+    };
     let cfg = RemoteConfig {
         app_id: args.app_id.clone(),
         members: members.to_vec(),
         request_timeout: Duration::from_secs(args.timeout_secs),
+        max_inflight,
         // Left at its default `true`: the service runs `Sessioned`, so a
         // re-send is answered `replayed`, never applied twice.
-        ..Default::default()
+        ..defaults
     };
     loop {
         match RemoteClient::connect(cfg.clone()) {
@@ -140,6 +155,66 @@ fn remaining(deadline: Instant) -> Duration {
         .max(Duration::from_secs(1))
 }
 
+// TODO(app): bench the write your app does most — change bench_command to
+// build it (keep it valid: bench validates the first one before connecting).
+fn bench_command(i: u64) -> Command {
+    Command::Put {
+        key: format!("bench-{}", i % 1024),
+        value: "x".repeat(16),
+    }
+}
+
+/// A window of tickets (`uc_remote`'s own advice for throughput: submit many,
+/// wait them in order). Timing reads this machine's clock — the client is
+/// not replicated state.
+fn bench(
+    client: &RemoteClient,
+    duration_secs: u64,
+    inflight: u32,
+    timeout: Duration,
+) -> Result<(), Fail> {
+    let start = Instant::now();
+    let end = start + Duration::from_secs(duration_secs);
+    let mut window: VecDeque<(Instant, Ticket)> = VecDeque::new();
+    let mut lat_us: Vec<u64> = Vec::new();
+    let mut i: u64 = 0;
+    loop {
+        while window.len() < inflight as usize && Instant::now() < end {
+            let sent = Instant::now();
+            let ticket = client
+                .submit(&app::encode(&bench_command(i)))
+                .map_err(|e| Fail::Run(e.to_string()))?;
+            i = i.wrapping_add(1);
+            window.push_back((sent, ticket));
+        }
+        let Some((sent, ticket)) = window.pop_front() else {
+            break;
+        };
+        ticket
+            .wait_timeout(timeout)
+            .map_err(|e| Fail::Run(e.to_string()))?;
+        lat_us.push(u64::try_from(sent.elapsed().as_micros()).unwrap_or(u64::MAX));
+    }
+    let elapsed_ms = u64::try_from(start.elapsed().as_millis())
+        .unwrap_or(u64::MAX)
+        .max(1);
+    lat_us.sort_unstable();
+    let n = lat_us.len() as u64;
+    let pct = |p: u64| -> u64 {
+        let idx = usize::try_from(n.saturating_sub(1).saturating_mul(p) / 100).unwrap_or(0);
+        lat_us.get(idx).copied().unwrap_or(0)
+    };
+    println!(
+        "bench ops={n} elapsed_ms={elapsed_ms} ops_per_sec={} p50_us={} p90_us={} p99_us={} max_us={} inflight={inflight}",
+        n.saturating_mul(1000) / elapsed_ms,
+        pct(50),
+        pct(90),
+        pct(99),
+        lat_us.last().copied().unwrap_or(0),
+    );
+    Ok(())
+}
+
 fn run(args: &Args) -> Result<(), Fail> {
     let members = gateways(args);
     for g in &members {
@@ -154,6 +229,28 @@ fn run(args: &Args) -> Result<(), Fail> {
             "--timeout-secs must be greater than zero".into(),
         ));
     }
+    if let Sub::Bench {
+        duration_secs,
+        inflight,
+    } = &args.cmd
+    {
+        if *inflight == 0 {
+            return Err(Fail::Args("--inflight must be greater than zero".into()));
+        }
+        if *duration_secs == 0 {
+            return Err(Fail::Args(
+                "--duration-secs must be greater than zero".into(),
+            ));
+        }
+        if *duration_secs > 86400 {
+            return Err(Fail::Args(
+                "--duration-secs must be at most 86400 (a day)".into(),
+            ));
+        }
+        bench_command(0)
+            .validate()
+            .map_err(|e| Fail::Args(format!("bench_command: {e}")))?;
+    }
 
     // Build and validate the command BEFORE dialing anything: an oversize
     // key/value is a configuration error, not something a retry could fix,
@@ -165,6 +262,7 @@ fn run(args: &Args) -> Result<(), Fail> {
         }),
         Sub::Delete { key } => Some(Command::Delete { key: key.clone() }),
         Sub::Get { .. } => None,
+        Sub::Bench { .. } => None,
     };
     if let Some(c) = &command {
         c.validate().map_err(|e| Fail::Args(e.to_string()))?;
@@ -178,6 +276,15 @@ fn run(args: &Args) -> Result<(), Fail> {
             submit(&client, command.as_ref().expect("built above"), deadline)
         }
         Sub::Get { key, linearizable } => query(&client, key, *linearizable, deadline),
+        Sub::Bench {
+            duration_secs,
+            inflight,
+        } => bench(
+            &client,
+            *duration_secs,
+            *inflight,
+            Duration::from_secs(args.timeout_secs),
+        ),
     };
     // Shut the client's reader thread down before returning either way — the
     // process is about to exit, but a reference client should still show the

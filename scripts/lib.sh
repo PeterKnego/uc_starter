@@ -13,14 +13,28 @@ OFF="${UC_PORT_OFFSET:-0}"
 NODE_PORT()    { echo $((BASE_PORT + OFF + $1)); }
 GW_PORT()      { echo $((BASE_PORT + OFF + 100 + $1)); }
 METRICS_PORT() { echo $((BASE_PORT + OFF + 200 + $1)); }
-gateways_csv() { echo "127.0.0.1:$(GW_PORT 0),127.0.0.1:$(GW_PORT 1),127.0.0.1:$(GW_PORT 2)"; }
-# cargo may be configured with a shared target dir, so ask it where release
-# binaries land rather than assuming ./target.
-app_bin_dir() {
+# UC_GATEWAYS overrides the local three (cloud-infra points the demo at the
+# cloud's public members with it).
+gateways_csv() { echo "${UC_GATEWAYS:-127.0.0.1:$(GW_PORT 0),127.0.0.1:$(GW_PORT 1),127.0.0.1:$(GW_PORT 2)}"; }
+# cargo may be configured with a shared target dir, so ask it where binaries
+# land rather than assuming ./target.
+app_target_dir() {
   local t; t="$(cargo metadata --format-version=1 --no-deps 2>/dev/null | sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')"
-  echo "${t:-$PROJECT_DIR/target}/release"
+  echo "${t:-$PROJECT_DIR/target}"
 }
+app_bin_dir() { echo "$(app_target_dir)/release"; }
 die() { printf '%s: %s\n' "$(basename "$0")" "$*" >&2; exit 3; }
+# macOS has shasum, not sha256sum; both print "<hex>  <name>".
+sha256_stdin() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; }
+verify_sha256() { # SUMS FILE → 0 when FILE's line in SUMS matches its content
+  local want got
+  want="$(awk -v f="$(basename "$2")" '$2==f || $2=="*"f {print $1}' "$1")"
+  got="$(sha256_stdin <"$2" | cut -c1-64)"
+  [ -n "$want" ] && [ "$want" = "$got" ]
+}
+# The oldest glibc a cross-built bundle runs on (Ubuntu 22.04 ships 2.35;
+# cloud-infra's hosts run 24.04).
+GLIBC_FLOOR=2.35
 require_linux() {
   [ "$(uname -s)" = Linux ] || die "ultima_cluster nodes run on Linux only (this is $(uname -s)). Open this project in its devcontainer — see README.md § Devcontainer."
 }
@@ -28,11 +42,13 @@ require_linux() {
 # from a POSIX-locale shell; editor droppings (vim .*.sw?, emacs *~ and .#*)
 # are not code; a missing path (no Cargo.lock yet) is skipped, not an error.
 tree_hash() { # paths… → 16 hex chars over file names + contents
-  local p; for p in "$@"; do
+  local p f; for p in "$@"; do
     if [ -e "$p" ]; then
       find "$p" -type f -not -path '*/target/*' -not -name '.*.sw?' -not -name '*~' -not -name '.#*' -print0
     fi
-  done | LC_ALL=C sort -z | xargs -0 sha256sum 2>/dev/null | sha256sum | cut -c1-16
+  done | LC_ALL=C sort -z | while IFS= read -r -d '' f; do
+    printf '%s  %s\n' "$(sha256_stdin <"$f" | cut -c1-64)" "$f"
+  done | sha256_stdin | cut -c1-16
 }
 code_hash()            { tree_hash src Cargo.toml Cargo.lock; }
 # What an upgrade-check PASS vouches for: the code, the declaration, the
@@ -56,7 +72,12 @@ progress_skipped() { [ -f "$PROGRESS" ] && grep -qE "^skip $1( |$)" "$PROGRESS";
 # renders the local cluster from these, scripts/package.sh the deploy bundle.
 #
 #   render_node_toml PROFILE ID INSTANCE_DIR ADMIN_KEY HOST0 HOST1 HOST2
-#   render_gateway_toml ID INSTANCE_DIR HOST0 HOST1 HOST2
+#   render_gateway_toml ID INSTANCE_DIR HOST0 HOST1 HOST2 [PUB0 PUB1 PUB2]
+#
+# With PUB0..2 (a cloud: clients reach the gateways on public addresses that
+# are not on the interface on every cloud) the gateway listens on 0.0.0.0 and
+# [[members]] names the public addresses — REDIRECT and LEADER_CHANGED send
+# clients to them, so they must be the ones clients can reach.
 #
 # PROFILE is `local` (one host, small journal geometry so purge is visible,
 # crypto off) or `deploy` (one node per host, default geometry, crypto ON with
@@ -132,17 +153,22 @@ EOT
 
 render_gateway_toml() {
   local id="$1" dir="$2"; shift 2
-  local hosts=("$@") i
-  [ "${#hosts[@]}" = 3 ] || die "render_gateway_toml: need three hosts"
+  local hosts=("$@") i listen
+  local -a reach
+  case "${#hosts[@]}" in
+    3) reach=("${hosts[0]}" "${hosts[1]}" "${hosts[2]}"); listen="${hosts[$id]}" ;;
+    6) reach=("${hosts[3]}" "${hosts[4]}" "${hosts[5]}"); listen=0.0.0.0 ;;
+    *) die "render_gateway_toml: need three hosts, or three hosts and three public addresses" ;;
+  esac
   cat <<EOT
 [local]
 instance_dir = "$dir"
 app_id = "$APP_ID"
-listen = "${hosts[$id]}:$(GW_PORT "$id")"
+listen = "$listen:$(GW_PORT "$id")"
 
 EOT
   for i in 0 1 2; do
-    printf '[[members]]\nnode_id = %s\ngateway = "%s:%s"\n\n' "$i" "${hosts[$i]}" "$(GW_PORT "$i")"
+    printf '[[members]]\nnode_id = %s\ngateway = "%s:%s"\n\n' "$i" "${reach[$i]}" "$(GW_PORT "$i")"
   done
   cat <<'EOT'
 [limits]
