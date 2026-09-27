@@ -289,12 +289,18 @@ must = [
     "cd cloud-infra && make cloud-destroy",
     "terraform apply", "terraform -chdir=cloud-infra/terraform destroy",
     "ansible-playbook deploy.yml", "ansible cluster -m ping",
+    "CLOUD_INFRA_MAKE=1 cloud-infra/scripts/destroy.sh",
+    "CLOUD_INFRA_MAKE=1 bash cloud-infra/scripts/deploy.sh --restart",
+    "TF_LOG=1 terraform -chdir=cloud-infra/terraform destroy -auto-approve",
+    "/usr/local/bin/terraform destroy", "env terraform apply",
+    "make cloud-plan", "make cloud-up REPLACE=1", "REPLACE=1 make -C cloud-infra cloud-up",
 ]
 must_not = [
     "cat cloud-infra/README.md", "grep -rn foo cloud-infra/",
     "sed -n 1p cloud-infra/scripts/common.sh", "shellcheck -x cloud-infra/scripts/test.sh",
     "git diff main -- cloud-infra/", "cd /x/.superpowers/sdd/2026-09-26-cloud-infra && ls",
-    "make check", "make up",
+    "make check", "make up", "cat cloud-infra/terraform/main.tf",
+    "shellcheck -x -S warning cloud-infra/scripts/apply.sh", "bash template-tests/cloud.sh",
 ]
 missing = [c for c in must if not any(fnmatch.fnmatch(c, a) for a in ask)]
 assert not missing, ("should ask but does not", missing)

@@ -8,7 +8,15 @@
       "Bash(.uc/bin/uc2ctl:*)",
       "Bash(*make*cloud-*)",
       "Bash(terraform *)",
-      "Bash(*ansible*)"
+      "Bash(*ansible*)",
+      "Bash(*CLOUD_INFRA_MAKE*)",
+      "Bash(*terraform apply*)",
+      "Bash(*terraform destroy*)",
+      "Bash(*terraform import*)",
+      "Bash(*terraform state*)",
+      "Bash(*terraform -chdir*)",
+      "Bash(*terraform plan*)",
+      "Bash(*REPLACE=1*)"
     ]
   },
   "hooks": {

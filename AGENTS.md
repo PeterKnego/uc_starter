@@ -48,7 +48,7 @@ committed commands in the same order, so `apply` must be deterministic.
 | `make status` | `uc2ctl status` on every node |
 | `make corpus` / `make upgrade-check` | diff-replay corpus (before a change) / replay it through old vs new |
 | `make done STEP=<id>` / `make skip STEP=<id>` | record a step the repo cannot show / a deliberate skip (ids: `scripts/next.sh --list`) |
-| `make cloud-up` / `cloud-test` / `cloud-bench` / `cloud-status` / `cloud-logs` / `cloud-deploy` / `cloud-destroy` / `cloud-oneshot` | the app on three cloud hosts — every one only after a yes (rule 9) |
+| `make cloud-plan` / `cloud-up` / `cloud-test` / `cloud-bench` / `cloud-status` / `cloud-logs` / `cloud-deploy` / `cloud-destroy` / `cloud-oneshot` | the app on three cloud hosts — every one only after a yes (rule 9) |
 
 Start and stop cluster processes only through `make up`, `make down` and
 `make restart-services` (or `scripts/cluster.sh`); they enforce the start
@@ -100,9 +100,11 @@ order (nodes, then a serving leader, then services, then gateways).
    developer's yes in the conversation. For `cloud-up`, `cloud-oneshot`,
    `cloud-deploy` and `cloud-destroy` the pre-flight names the cloud, region,
    instance type × 3, `ttl_hours`, and what is created, changed or destroyed
-   (`cloud-infra/terraform.tfvars`, `make cloud-status`). A permission prompt is
-   not the go-ahead. After `cloud-test` or `cloud-bench`, offer `cloud-destroy`:
-   the hosts bill until they are destroyed.
+   (`cloud-infra/terraform.tfvars`, `make cloud-plan`, `make cloud-status`). A
+   permission prompt is not the go-ahead. These targets take minutes: run them
+   in the background or with the longest command timeout, never a short one.
+   After `cloud-test` or `cloud-bench`, offer `cloud-destroy`: the hosts bill
+   until they are destroyed.
 
 ## 5. Evidence
 

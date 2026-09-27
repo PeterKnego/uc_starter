@@ -14,6 +14,7 @@ run it. A permission prompt is not the yes.
 | they say | run | pre-flight to state |
 |---|---|---|
 | deploy / put it on the cloud (no cluster yet) | `make cloud-up` | cloud, region, instance type ×3, ttl_hours (from `cloud-infra/terraform.tfvars`); "creates 3 billable hosts" |
+| what would cloud-up change? / after editing `terraform.tfvars` | `make cloud-plan` | "read-only: shows what `cloud-up` would create, change or destroy" |
 | deploy my change (cluster up) | `make cloud-deploy` | cloud, region, instance type ×3, ttl_hours (from `cloud-infra/terraform.tfvars`); "rebuilds and restarts the service one host at a time; refuses an FSM_VERSION or UC change" |
 | test it on the cloud / on infra | `make cloud-test` (none yet: `make cloud-oneshot`) | "demo, MTU check, stops the leader's node briefly" |
 | bench / load it | `make cloud-bench DURATION=10 INFLIGHT=32` | "10 s of writes from a follower host" |
@@ -21,16 +22,31 @@ run it. A permission prompt is not the yes.
 | logs / why did X fail | `make cloud-logs HOST=<0-2> PROC=node\|service\|gateway` | "read-only" |
 | tear down / destroy | `make cloud-destroy` | "destroys the 3 hosts and their disks; the cluster's data is gone" |
 
-`make cloud-up` on a cluster that already answers only re-applies
-infrastructure (the firewall) and leaves the running code alone — it prints
-"the cluster is already running — infrastructure (firewall) is updated; code
-changes go through make cloud-deploy" and exits; offer `make cloud-deploy`
-instead when the developer wants their latest change out there.
+`make cloud-up` on a cluster that already exists: first `make cloud-plan`
+(after a yes) and quote its summary in the pre-flight — "changes the firewall"
+or "destroys and replaces node1". `cloud-up` refuses a plan that destroys or
+replaces a host unless `REPLACE=1`; offer `make cloud-up REPLACE=1` only after
+saying the replaced hosts come back empty (a clean cluster: `cloud-destroy`,
+then `cloud-up`). On a completely deployed, running cluster `cloud-up` leaves
+the code alone ("the cluster is already running — … code changes go through
+make cloud-deploy"); offer `make cloud-deploy` for their latest change. A
+`cloud-up` that failed part-way resumes when run again, once its cause is fixed.
 
 No `cloud-infra/terraform.tfvars` yet: walk them through `cloud-infra/README.md`
 (credentials in `.env`, `cp example.tfvars terraform.tfvars`) before offering
 `cloud-up`. `make -C cloud-infra cloud-env-show` checks credentials without
 printing them (it asks too: it matches `*make*cloud-*`).
+
+## Long runs
+
+`cloud-up`, `cloud-oneshot`, `cloud-deploy`, `cloud-test` and `cloud-bench`
+take minutes (a cold build, then Terraform and Ansible). Run them in the
+background and follow the output, or with the longest command timeout — never
+the default short one. If a run was interrupted or timed out, say so plainly,
+then offer `make cloud-status` (after a yes) to see what exists, and offer
+`make cloud-destroy`: hosts may be up and billing, and it works from Terraform
+state even where `cloud-status` finds no inventory yet. `cloud-oneshot`
+destroys on Ctrl-C, TERM or HUP, but not when it is killed outright.
 
 ## After
 
