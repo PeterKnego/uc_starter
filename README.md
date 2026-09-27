@@ -139,7 +139,7 @@ runs.
 | `check` | test + lint, and record it for the tutor |
 | `todo` | the `TODO(app)` markers left |
 | `done` | record a step the repo cannot show: `make done STEP=concepts` |
-| `skip` | deliberately skip a step: `make skip STEP=snapshots` |
+| `skip` | deliberately skip a step: `make skip STEP=observe` |
 | `diffreplay` | install `uc2-diffreplay` for `UC_VERSION` into `.uc/cargo` |
 | `corpus` | capture a diff-replay corpus + keep the old binary (before changing code) |
 | `upgrade-check` | diff-replay the corpus through old vs new builds |
@@ -215,7 +215,7 @@ pins the crates a teammate's build resolves.
   [add a query](docs/how-to/add-a-query.md) ·
   [change the state shape](docs/how-to/change-the-state-shape.md) ·
   [schedule work](docs/how-to/schedule-work.md) ·
-  [remove sessions or snapshots](docs/how-to/remove-sessions-or-snapshots.md) ·
+  [remove sessions](docs/how-to/remove-sessions.md) ·
   [upgrade UC](docs/how-to/upgrade-uc.md) ·
   [deploy](docs/how-to/deploy.md) ·
   [use the shared-memory client](docs/how-to/use-the-shmem-client.md)

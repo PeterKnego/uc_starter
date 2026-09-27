@@ -59,7 +59,7 @@ published.
   `expired` and never applied. The typed `uc_client::Client::submit` sends
   bare commands, so do not use it against this service. There is no "sessions
   optional" here unless you also remove `Sessioned` (see
-  [Remove sessions or snapshots](remove-sessions-or-snapshots.md)).
+  [Remove sessions](remove-sessions.md)).
 - **The same codec.** Encode commands and queries with `app::encode` and decode
   answers with `app::decode`, exactly as the remote client does.
 

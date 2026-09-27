@@ -44,7 +44,7 @@ todo: ## the TODO(app) markers left
 	@grep -rn 'TODO(app)' src tests scripts docs WHAT-NEXT.md 2>/dev/null || echo "no TODO(app) markers left"
 done: ## record a step the repo cannot show: make done STEP=concepts
 	@scripts/progress.sh done $(STEP)
-skip: ## deliberately skip a step: make skip STEP=snapshots
+skip: ## deliberately skip a step: make skip STEP=observe
 	@scripts/progress.sh skip $(STEP)
 diffreplay: ## install uc2-diffreplay for UC_VERSION into .uc/cargo
 	cargo install uc_diffreplay --version $(UC_VERSION) --locked --root .uc/cargo
