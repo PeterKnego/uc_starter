@@ -186,11 +186,15 @@ Then, on your development machine: `make done STEP=deploy`.
 
 ## Running it
 
-- **Snapshots.** The bundle's `node.toml` has no snapshot cadence unless
-  `UC_SNAPSHOT_INTERVAL` was set when you ran `make package`. Take instants on
-  demand, on the leader's host:
+- **Snapshots.** The bundle's `node.toml` seeds a cadence: the leader takes an
+  instant every 1 GiB of log (`snapshot_interval_bytes = 1073741824`), and
+  purge drops the journal below each complete one, so the journal stays
+  bounded. Set `UC_SNAPSHOT_INTERVAL=<bytes>` when you run `make package` for
+  another interval: shorter means faster catch-up and more frequent freezes,
+  longer the reverse. The value only seeds a new cluster; change a running
+  one with `uc2ctl settings apply`. For an extra instant now, on the leader's
+  host:
   `sudo uc2ctl snapshot --instance-dir /srv/uc2/<APP_NAME> --app-id <APP_ID> --admin-key /etc/uc2/admin/admin.key`.
-  Purge only moves once an instant completes on every row.
 - **Backups.** `sudo uc2ctl backup` works on a running node; copy the result off
   the host. It is also the only rollback from a pinned upgrade.
 - **Monitoring.** Scrape each node's metrics port. The alert rules are in
