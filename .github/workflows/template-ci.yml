@@ -23,9 +23,10 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with: { terraform_version: 1.9.8, terraform_wrapper: false }
       - run: pip3 install --user ansible-core ziglang
+      - run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - uses: taiki-e/install-action@v2
         with: { tool: cargo-zigbuild }
-      - run: CLOUD_REQUIRE_CROSS=1 bash template-tests/cloud.sh
+      - run: CLOUD_REQUIRE_CROSS=1 CLOUD_REQUIRE_TOOLS=1 bash template-tests/cloud.sh
       - run: bash template-tests/generator.sh
       - run: bash template-tests/lint-determinism.sh
       - run: bash template-tests/tree-hash.sh
@@ -71,6 +72,7 @@ jobs:
           runCmd: make bins test-cluster
   macos-package:
     runs-on: macos-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: taiki-e/install-action@v2

@@ -24,6 +24,7 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with: { terraform_version: 1.9.8, terraform_wrapper: false }
       - run: pip3 install --user ansible-core ziglang
+      - run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: generate a project and its tfvars
         env: { GCP_SA_JSON: "${{ secrets.GCP_SA_JSON }}" }
         run: |
@@ -45,3 +46,5 @@ jobs:
       - run: cd "$P" && make bins && TF_VAR_owner="uce2e-${{ github.run_id }}" make cloud-oneshot
       - if: always()
         run: cd "$P" && TF_VAR_owner="uce2e-${{ github.run_id }}" make cloud-destroy
+      - if: always()
+        run: rm -f "$HOME/gcp.json"

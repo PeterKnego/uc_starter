@@ -2,7 +2,8 @@
 # Cloud-path contract, no cloud account needed: portable hashing, gateway
 # rendering, package GATEWAYS/ARCH, cloud-infra preflight and guards, agent
 # permissions. CLOUD_REQUIRE_CROSS=1 (CI) fails instead of skipping when
-# cargo-zigbuild is missing.
+# cargo-zigbuild is missing. CLOUD_REQUIRE_TOOLS=1 (CI) fails instead of
+# skipping when terraform or ansible-playbook is missing.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 OUT="$HOME/scratch/uc_starter-gen/cloud"
@@ -73,6 +74,7 @@ if command -v terraform >/dev/null; then
     && terraform fmt -check -recursive && terraform validate >/dev/null && terraform test) \
     || fail "terraform init/fmt/validate/test"
   rm -rf cloud-infra/terraform/.terraform cloud-infra/terraform/.terraform.lock.hcl
+elif [ "${CLOUD_REQUIRE_TOOLS:-0}" = 1 ]; then fail "terraform missing and CLOUD_REQUIRE_TOOLS=1"
 else echo "note: terraform not installed — terraform checks skipped"; fi
 
 # --- Task 6: control surface (no cloud: fake terraform that must not run)
@@ -129,6 +131,7 @@ if command -v ansible-playbook >/dev/null; then
     ANSIBLE_CONFIG=cloud-infra/ansible/ansible.cfg ansible-playbook -i "$OUT/inv.yml" --syntax-check cloud-infra/ansible/$pb.yml >/dev/null \
       || fail "ansible syntax: $pb.yml"
   done
+elif [ "${CLOUD_REQUIRE_TOOLS:-0}" = 1 ]; then fail "ansible-playbook missing and CLOUD_REQUIRE_TOOLS=1"
 else echo "note: ansible not installed — playbook syntax not checked"; fi
 
 # --- Task 8: test/status decisions, unreachable hosts
@@ -196,7 +199,7 @@ echo "$out" | grep -q 'run this through make cloud-' || fail "direct script run:
 
 # --- Task 11: the cloud path runs on macOS's stock bash 3.2
 hits="$(grep -nE 'mapfile|readarray|declare -A|\$\{[A-Za-z_]+(,,|\^\^)\}|sed -i|^[^#]*[^_]sha256sum' \
-  cloud-infra/scripts/*.sh scripts/package.sh scripts/fetch-uc.sh | grep -v 'command -v sha256sum' || true)"
+  cloud-infra/scripts/*.sh scripts/package.sh scripts/fetch-uc.sh scripts/lib.sh | grep -v 'command -v sha256sum' || true)"
 [ -z "$hits" ] || fail "bash-3.2/BSD-unsafe constructs on the cloud path:
 $hits"
 if [ -x /bin/bash ] && /bin/bash -c '[ "${BASH_VERSINFO[0]}" -lt 4 ]'; then
