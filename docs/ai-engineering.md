@@ -60,16 +60,18 @@ agent edits a Rust file, it runs `rustfmt` on it and
 `HashMap`) is reported back to the agent at the edit, naming the replacement,
 instead of surfacing later in `make lint`.
 
-**Permissions** (`.claude/settings.json`): routine work runs without prompts
-(`make` targets, `cargo build/check/test/clippy/fmt`, `scripts/next.sh`,
-`scripts/lint-determinism.sh`, cluster status, leader and root, and
-`git status/diff/log`). Anything that can pin an upgrade **always asks you**:
+**Permissions** (`.claude/settings.json`): there is no `allow` list. In auto
+mode the classifier approves routine work (`make`, `cargo`, `git`); in the
+default mode Claude Code asks before anything that is not read-only. Add your
+own allowances in `.claude/settings.local.json`, which is not committed.
+Anything that can pin an upgrade **always asks you**:
 any command that mentions `upgrade-drill`, `UC_CONFIRM_PIN` or
 `upgrade pin`, or runs `.uc/bin/uc2ctl`, asks, even in auto mode. The rules
 match the text anywhere in the command (`Bash(*upgrade-drill*)`,
 `Bash(*UC_CONFIRM_PIN*)`, `Bash(*upgrade pin*)`), so reordered or quoted
 `make` arguments cannot slip past them, and Claude Code checks `ask` rules
-before `allow` rules, so the blanket `make` allowance never covers them. The scripts guard the pin as well: `make
+before `allow` rules and before the auto-mode classifier, so no allowance you
+add can cover them. The scripts guard the pin as well: `make
 upgrade-drill` asks you to type `PIN`, and `scripts/cluster.sh ctl … upgrade
 pin` refuses without `UC_CONFIRM_PIN=yes`. A pin is a one-way door: there is
 no unpin, and the only rollback is the backup taken before it. Any command
