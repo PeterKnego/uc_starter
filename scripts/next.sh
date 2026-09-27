@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# next.sh — where am I on WHAT-NEXT.md? Computed from the repo, never remembered.
+# next.sh — where am I on TUTORIAL.md? Computed from the repo, never remembered.
 #   scripts/next.sh          human
 #   scripts/next.sh --json   for agents
 #   scripts/next.sh --list   step ids in order
@@ -49,7 +49,7 @@ check_env() {
   [[ "$v" == *"$UC_VERSION"* ]] || { DETAIL+=(".uc/bin has '$v' but UC_VERSION is $UC_VERSION: make bins"); return 1; }
 }
 check_skeleton() { stamp_check skeleton any "run: make up && make demo"; }
-check_concepts() { progress_has concepts || { DETAIL+=("read WHAT-NEXT.md Step 3, then: make done STEP=concepts"); return 1; }; }
+check_concepts() { progress_has concepts || { DETAIL+=("read TUTORIAL.md Step 3, then: make done STEP=concepts"); return 1; }; }
 check_design()   { [ -f docs/app-design.md ] || { DETAIL+=("docs/app-design.md is missing — restore it (git checkout docs/app-design.md) and write your design there"); return 1; }; todo_in docs/app-design.md; }
 check_commands() { todo_in src/commands.rs || return 1; cargo check -q 2>/dev/null || { DETAIL+=("cargo check fails — run it to see why"); return 1; }; }
 check_state()    { todo_in src/state.rs src/snapshot.rs tests/state.rs || return 1; cargo test -q --test state >/dev/null 2>&1 || { DETAIL+=("cargo test --test state fails — run it to see why"); return 1; }; }
@@ -78,7 +78,7 @@ emit() { # n part id title status part1_complete part1_just_completed
   else
     [ "$5" = complete ] && { echo "All steps complete."; return; }
     [ "$7" = true ] && echo "Part 1 complete — your app runs on a three-node cluster."
-    echo "Step $1/14 · Part $2 · $4 → WHAT-NEXT.md \"Step $1\""
+    echo "Step $1/14 · Part $2 · $4 → TUTORIAL.md \"Step $1\""
     echo "  status: $5"
     local d; for d in ${DETAIL[@]+"${DETAIL[@]}"}; do echo "  - $d"; done
   fi

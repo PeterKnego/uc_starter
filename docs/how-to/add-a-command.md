@@ -123,7 +123,7 @@ old and new builds must never run side by side. On any cluster you care about
 (anything but your disposable local one), bump `FSM_VERSION` in
 `src/identity.rs` and roll it out as an upgrade: capture a corpus with
 `make corpus` *before* you change the code, then `make upgrade-check` and
-`make upgrade-drill`. `WHAT-NEXT.md` Step 12 is the full procedure.
+`make upgrade-drill`. `TUTORIAL.md` Step 12 is the full procedure.
 
 **The rollout order.** Never run a client that sends the new variant until
 **every** service runs the new build. On a real cluster, that means after the

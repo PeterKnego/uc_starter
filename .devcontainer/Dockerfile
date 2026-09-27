@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends jq iproute2 pyt
  && install -m 0755 "cosign-linux-${arch}" /usr/local/bin/cosign \
  && rm -f "cosign-linux-${arch}" cosign_checksums.txt
 
-# cloud-infra (WHAT-NEXT.md Step 14): terraform, ansible, and zig for cross builds.
+# cloud-infra (TUTORIAL.md Step 14): terraform, ansible, and zig for cross builds.
 ARG TERRAFORM_VERSION=1.9.8
 RUN arch="$(dpkg --print-architecture)" && cd /tmp \
  && curl -fsSL -o tf.zip "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_${arch}.zip" \

@@ -30,7 +30,7 @@ UC_UPGRADE_SKIP_INDEX=1 scripts/uc-upgrade.sh 9.9.9 || fail "uc-upgrade.sh 9.9.9
 [ "$(cat UC_VERSION)" = 9.9.9 ] || fail "UC_VERSION not moved to 9.9.9, is $(cat UC_VERSION)"
 got="$(grep -c '"=9\.9\.9"' Cargo.toml || true)"
 [ "$got" = 4 ] || fail "expected all 4 Cargo.toml pins (uc_service/uc_remote/uc_protocol/uc_diffreplay) at =9.9.9, found $got"
-for f in README.md WHAT-NEXT.md docs/how-to/upgrade-uc.md docs/concepts.md docs/troubleshooting.md upgrade/intent.toml.example; do
+for f in README.md TUTORIAL.md docs/how-to/upgrade-uc.md docs/concepts.md docs/troubleshooting.md upgrade/intent.toml.example; do
   grep -q 'blob/v9\.9\.9/' "$f" || fail "$f: upstream doc link did not move to v9.9.9"
 done
 
@@ -108,7 +108,7 @@ set -e
 [[ "$out" == *"raw template"* ]] || fail "raw-template run should say it skips cargo update: $out"
 [ "$(cat UC_VERSION)" = 9.9.9 ] || fail "raw template: UC_VERSION not moved"
 [ "$(grep -c '"=9\.9\.9"' Cargo.toml)" = 4 ] || fail "raw template: the four pins did not move"
-grep -q 'blob/v9\.9\.9/' WHAT-NEXT.md || fail "raw template: links did not move"
+grep -q 'blob/v9\.9\.9/' TUTORIAL.md || fail "raw template: links did not move"
 [ ! -e Cargo.lock ] || fail "raw template: a Cargo.lock appeared"
 tt_after="$(find template-tests -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum)"
 [ "$tt_before" = "$tt_after" ] || fail "raw template: template-tests/ was rewritten"

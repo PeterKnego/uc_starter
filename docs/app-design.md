@@ -4,7 +4,7 @@ The design note for this app: what each command and query means, what the state
 is, and why it stays deterministic. Keep it in step with `src/commands.rs`.
 Every section below is filled in for the skeleton registry as a worked example.
 Rewrite each one for your app, then delete its TODO marker line (the HTML comment under the heading).
-WHAT-NEXT.md Step 4 walks you through it.
+TUTORIAL.md Step 4 walks you through it.
 
 ## 1. What the app does
 
@@ -99,7 +99,7 @@ Measured with `app::encode` (bincode 2, standard config). A string of up to
   version is refused by name.
 - **Needs a new image version:** any change to how `State` serializes — a field
   added, removed, renamed or reordered, a type changed. Bump `IMAGE_VERSION`,
-  keep reading the old image, and bump `FSM_VERSION` (WHAT-NEXT.md Step 12).
+  keep reading the old image, and bump `FSM_VERSION` (TUTORIAL.md Step 12).
   Changing behaviour without changing the state shape needs a new
   `FSM_VERSION`, not a new image version.
 - **Freeze cost:** `freeze()` clones the whole state on the apply thread. That

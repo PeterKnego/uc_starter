@@ -8,7 +8,7 @@ always needs you.
 ## The loop
 
 1. **Tutor.** Ask "what next?". The agent runs `scripts/next.sh --json`, reads
-   the step it names in `WHAT-NEXT.md`, explains the concept, and asks whether
+   the step it names in `TUTORIAL.md`, explains the concept, and asks whether
    you want to do the step yourself (it guides and reviews) or have it done
    (it makes the change, then walks you through the diff).
 2. **Design note as the spec.** Before code, the agent interviews you and

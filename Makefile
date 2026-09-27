@@ -12,7 +12,7 @@ export APP_NAME APP_ID FSM_NAME BASE_PORT
 help: ## this list
 	@grep -hE '^[a-z-]+:.*## ' $(firstword $(MAKEFILE_LIST)) | sed 's/:.*## /\t/' | expand -t22
 
-next: ## where am I on WHAT-NEXT.md? (agents: scripts/next.sh --json)
+next: ## where am I on TUTORIAL.md? (agents: scripts/next.sh --json)
 	@scripts/next.sh
 bins: ## download + verify the ultima_cluster binaries for UC_VERSION
 	@scripts/fetch-uc.sh
@@ -42,7 +42,7 @@ lint: ## fmt + clippy + MSRV clippy + determinism grep
 check: test lint ## test + lint, and record it for the tutor
 	@scripts/stamp.sh check
 todo: ## the TODO(app) markers left
-	@grep -rn 'TODO(app)' src tests scripts docs WHAT-NEXT.md 2>/dev/null || echo "no TODO(app) markers left"
+	@grep -rn 'TODO(app)' src tests scripts docs TUTORIAL.md 2>/dev/null || echo "no TODO(app) markers left"
 done: ## record a step the repo cannot show: make done STEP=concepts
 	@scripts/progress.sh done $(STEP)
 skip: ## deliberately skip a step: make skip STEP=observe

@@ -21,7 +21,7 @@ make corpus         # snapshot + a span of log, and a copy of the running binary
 
 The corpus is taken from the running cluster and the old binary is copied
 from the running service process, so capture it *before* you edit. See
-`WHAT-NEXT.md` Step 12.
+`TUTORIAL.md` Step 12.
 
 ## 1. Bump `IMAGE_VERSION` and keep reading the old image — `src/snapshot.rs`
 

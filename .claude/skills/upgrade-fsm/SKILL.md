@@ -8,7 +8,7 @@ description: Use when a change alters what apply or query returns or stores (an 
 Adapted from UC's `diff-replay-judge` skill (pinned upstream:
 `https://github.com/PeterKnego/ultima_cluster/blob/v<UC_VERSION>/.claude/skills/diff-replay-judge/SKILL.md`).
 The harness is code and gives the verdict by its exit code; this skill decides
-what to run and explains what broke. WHAT-NEXT.md Step 12 is the procedure.
+what to run and explains what broke. TUTORIAL.md Step 12 is the procedure.
 
 ## 0. Capture the corpus — BEFORE any code change
 

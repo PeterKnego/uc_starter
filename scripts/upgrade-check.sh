@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # upgrade-check.sh — diff-replay the corpus through the old build
 # (upgrade/old/) and the current one, judged against upgrade/intent.toml
-# (WHAT-NEXT.md, Step 12).
+# (TUTORIAL.md, Step 12).
 # shellcheck source=scripts/lib.sh
 . "$(dirname "$0")/lib.sh"
 DR="$PROJECT_DIR/.uc/cargo/bin/uc2-diffreplay"; [ -x "$DR" ] || die "uc2-diffreplay missing — run: make diffreplay"

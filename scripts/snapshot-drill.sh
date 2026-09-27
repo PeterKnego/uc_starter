@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # snapshot-drill.sh — take a coordinated snapshot, SIGKILL one service, and
-# watch it come back to the same state (WHAT-NEXT.md, Step 10).
+# watch it come back to the same state (TUTORIAL.md, Step 10).
 # shellcheck source=scripts/lib.sh
 . "$(dirname "$0")/lib.sh"
 C="$PROJECT_DIR/scripts/cluster.sh"; CLI="$(app_bin_dir)/$APP_NAME"; GW="$(gateways_csv)"

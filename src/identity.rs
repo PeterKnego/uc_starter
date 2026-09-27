@@ -6,7 +6,7 @@
 pub const FSM_NAME: &str = "{{fsm_name}}";
 
 /// The semantic version of what `apply` does. Bump it on ANY behaviour
-/// change and run `make upgrade-check` (WHAT-NEXT.md, Step 12).
+/// change and run `make upgrade-check` (TUTORIAL.md, Step 12).
 pub const FSM_VERSION: u32 = uc_protocol::identity::pack_version(1, 0, 0);
 
 /// The cluster identity every process checks at attach.

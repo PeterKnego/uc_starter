@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # observe.sh — what an operator watches: health, readiness, the key series
-# (WHAT-NEXT.md, Step 11).
+# (TUTORIAL.md, Step 11).
 # shellcheck source=scripts/lib.sh
 . "$(dirname "$0")/lib.sh"
 # Names checked against a live 2.13.0 /metrics scrape. uc_service_* is your

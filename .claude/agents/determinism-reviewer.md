@@ -13,7 +13,7 @@ against every item of the checklist in `.claude/skills/determinism-review/SKILL.
 Also check: does the change alter what `apply` returns or stores, or what
 `query` returns, for an existing command, or add a command variant? If yes,
 `FSM_VERSION` in `src/identity.rs` must be bumped and the upgrade flow
-(WHAT-NEXT.md Step 12) is required.
+(TUTORIAL.md Step 12) is required.
 
 Report `file:line — hazard — fix` lines, then `FSM_VERSION bump required:
 yes|no (<why>)`. If there are none, write exactly "No determinism hazards

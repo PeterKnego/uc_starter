@@ -1,7 +1,7 @@
 # Upgrade ultima_cluster
 
 Move this project to a newer UC release. This is a different thing from
-upgrading *your* state machine (`WHAT-NEXT.md` Step 12): here the platform
+upgrading *your* state machine (`TUTORIAL.md` Step 12): here the platform
 changes under an unchanged app.
 
 **A UC upgrade is a whole-cluster stop and start.** A UC release can change

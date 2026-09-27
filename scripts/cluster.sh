@@ -43,11 +43,13 @@ say() { printf '%s\n' "$*"; }
 tcp_open() { (exec 3<>"/dev/tcp/$1/$2") 2>/dev/null; }
 udp_bound() { # port → is some socket bound to it (any address)?
     if command -v ss >/dev/null 2>&1; then
-        ss -Huln | awk '{print $4}' | grep -qE ":$1\$"
+        # grep without -q reads to EOF: under pipefail, grep -q's early exit
+        # could SIGPIPE awk and turn "bound" into "free".
+        ss -Huln | awk '{print $4}' | grep -E ":$1\$" >/dev/null
     else
         # No ss (a slim container): /proc/net/udp{,6} list the local port in hex.
         local hex; hex="$(printf '%04X' "$1")"
-        cat /proc/net/udp /proc/net/udp6 2>/dev/null | awk 'NR>1 {print $2}' | grep -qi ":$hex\$"
+        cat /proc/net/udp /proc/net/udp6 2>/dev/null | awk 'NR>1 {print $2}' | grep -i ":$hex\$" >/dev/null
     fi
 }
 
@@ -246,7 +248,7 @@ cmd_ctl() {
     local n="$1"; shift
     case " $* " in
         *" upgrade pin "*|*" upgrade "*" pin "*)
-            [ "${UC_CONFIRM_PIN:-}" = yes ] || die "refusing 'upgrade pin' without UC_CONFIRM_PIN=yes — a pin is a one-way door (WHAT-NEXT.md, Step 12)" ;;
+            [ "${UC_CONFIRM_PIN:-}" = yes ] || die "refusing 'upgrade pin' without UC_CONFIRM_PIN=yes — a pin is a one-way door (TUTORIAL.md, Step 12)" ;;
     esac
     ctl "$n" "$@"
 }
