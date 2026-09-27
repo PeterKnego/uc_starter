@@ -41,7 +41,7 @@ out="$(HOSTS=10.0.0.1,10.0.0.2,10.0.0.3 GATEWAYS=1.2.3.4,1.2.3.4,5.6.7.8 scripts
 echo "$out" | grep -q 'GATEWAYS must be three different' || fail "duplicate GATEWAYS: wrong message: $out"
 out="$(HOSTS=10.0.0.1,10.0.0.2,10.0.0.3 GATEWAYS=0.0.0.0,1.2.3.4,5.6.7.8 scripts/package.sh 2>&1)" && fail "GATEWAYS 0.0.0.0 accepted"
 make -s bins >/dev/null
-b="$(HOSTS=10.0.0.1,10.0.0.2,10.0.0.3 GATEWAYS=203.0.113.1,203.0.113.2,203.0.113.3 scripts/package.sh | head -1)"
+b="$(HOSTS=10.0.0.1,10.0.0.2,10.0.0.3 GATEWAYS=203.0.113.1,203.0.113.2,203.0.113.3 scripts/package.sh | sed -n 1p)"
 tar xzf "$b" -O "$(basename "$b" .tar.gz)/hosts/10.0.0.1/gateway.toml" | grep -qx 'gateway = "203.0.113.1:7100"' || fail "bundle gateway.toml lacks the public member"
 tar xzf "$b" -O "$(basename "$b" .tar.gz)/hosts/10.0.0.1/node.toml" | grep -qx 'bind = "10.0.0.1:7000"' || fail "bundle node.toml must bind the private address"
 
@@ -57,7 +57,7 @@ file -b .uc/dist/$other/bin/uc2-node | grep -q "ELF 64-bit" || fail ".uc/dist/$o
 scripts/fetch-uc.sh --arch "$other" | grep -q already || fail "second fetch-uc --arch re-downloaded"
 [ -x .uc/bin/uc2-node ] || fail "fetch-uc --arch touched .uc/bin"
 if command -v cargo-zigbuild >/dev/null; then
-  b="$(HOSTS=10.0.0.1,10.0.0.2,10.0.0.3 ARCH=$other scripts/package.sh | head -1)"
+  b="$(HOSTS=10.0.0.1,10.0.0.2,10.0.0.3 ARCH=$other scripts/package.sh | sed -n 1p)"
   case "$b" in *"-$other.tar.gz") ;; *) fail "bundle name does not carry ARCH: $b" ;; esac
   x="$OUT/x-$other"; rm -rf "$x"; mkdir -p "$x"; tar xzf "$b" -C "$x"
   want='x86-64'; [ "$other" = aarch64 ] && want='aarch64'
@@ -65,7 +65,7 @@ if command -v cargo-zigbuild >/dev/null; then
   tar tzf "$b" | grep -q '/\._' && fail "AppleDouble ._ files in the bundle"
 elif [ "${CLOUD_REQUIRE_CROSS:-0}" = 1 ]; then fail "cargo-zigbuild missing and CLOUD_REQUIRE_CROSS=1"
 else echo "note: cargo-zigbuild not installed — cross build not checked"; fi
-b="$(HOSTS=10.0.0.1,10.0.0.2,10.0.0.3 scripts/package.sh | head -1)"
+b="$(HOSTS=10.0.0.1,10.0.0.2,10.0.0.3 scripts/package.sh | sed -n 1p)"
 case "$b" in *"-$mach.tar.gz") ;; *) fail "default ARCH is not this machine's: $b" ;; esac
 
 # --- Task 5: terraform
