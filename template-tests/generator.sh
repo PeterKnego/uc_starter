@@ -22,6 +22,17 @@ grep -q 'LITERAL-CHECK {{not_a_placeholder}}' "$P/tests/cluster.rs" || fail "tes
 [ ! -e "$P/LICENSE" ] || fail "a LICENSE was generated — the license is the developer's choice"
 [ ! -e "$P/.github/README.md" ] || fail ".github/README.md leaked — it would shadow the project's README on GitHub"
 
+# Snapshot cadence: a deployed cluster takes an instant every 1 GiB of log, so
+# purge keeps the journal bounded; the local cluster stays on-demand so the
+# tutor's snapshot drill shows the instant it commands. UC_SNAPSHOT_INTERVAL
+# overrides both.
+render() { (cd "$P" && . scripts/lib.sh && render_node_toml "$@" "$OUT/n0" "$OUT/admin.key" 10.0.0.1 10.0.0.2 10.0.0.3); }
+grep -qx 'snapshot_interval_bytes = 1073741824' <<<"$(render deploy 0)" || fail "deploy node.toml: snapshot cadence is not 1 GiB"
+grep -qx 'snapshot_interval_bytes = 0' <<<"$(render local 0)" || fail "local node.toml: snapshot cadence is not on-demand (0)"
+grep -qx 'snapshot_interval_bytes = 4096' <<<"$(UC_SNAPSHOT_INTERVAL=4096 render deploy 0)" || fail "UC_SNAPSHOT_INTERVAL does not override the deploy cadence"
+grep -qx 'snapshot_interval_bytes = 4096' <<<"$(UC_SNAPSHOT_INTERVAL=4096 render local 0)" || fail "UC_SNAPSHOT_INTERVAL does not override the local cadence"
+grep -q '^\[purge\]' <<<"$(render deploy 0)" || fail "deploy node.toml lost [purge]"
+
 for bad in uc_mine 9lives Upper; do
   if "$HERE/gen.sh" "$OUT/bad-$bad" bad-app "$bad" x 7000 >/dev/null 2>&1; then fail "fsm_name $bad accepted"; fi
 done

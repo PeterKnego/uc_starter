@@ -59,14 +59,16 @@ progress_skipped() { [ -f "$PROGRESS" ] && grep -qE "^skip $1( |$)" "$PROGRESS";
 #   render_gateway_toml ID INSTANCE_DIR HOST0 HOST1 HOST2
 #
 # PROFILE is `local` (one host, small journal geometry so purge is visible,
-# crypto off) or `deploy` (one node per host, default geometry, crypto ON with
-# the key paths docs/how-to/deploy.md sets up). Node ID binds, serves metrics
+# crypto off, instants on demand) or `deploy` (one node per host, default
+# geometry, crypto ON with the key paths docs/how-to/deploy.md sets up, an
+# instant every 1 GiB of log). Node ID binds, serves metrics
 # and listens (gateway) on HOST<ID>; every [[members]] list names all three.
 # Ports come from NODE_PORT / GW_PORT / METRICS_PORT above. Reads APP_ID,
-# FSM_NAME and UC_SNAPSHOT_INTERVAL (genesis snapshot_interval_bytes, default 0).
+# FSM_NAME and UC_SNAPSHOT_INTERVAL (genesis snapshot_interval_bytes; overrides
+# the profile's default).
 render_node_toml() {
   local profile="$1" id="$2" dir="$3" admin_key="$4"; shift 4
-  local hosts=("$@") i geometry crypto
+  local hosts=("$@") i geometry crypto interval
   [ "${#hosts[@]}" = 3 ] || die "render_node_toml: need three hosts"
   case "$profile" in
     local)
@@ -78,7 +80,8 @@ render_node_toml() {
 buffer_bytes = 16777216
 journal_segment_bytes = 4194304
 '
-      crypto='enabled = false' ;;
+      crypto='enabled = false'
+      interval=0 ;;
     deploy)
       geometry=''
       # Crypto is ON: node traffic crosses a network this file cannot vouch
@@ -86,7 +89,10 @@ journal_segment_bytes = 4194304
       # docs/how-to/deploy.md says how to make them.
       crypto='enabled = true
 key_path = "/etc/uc2/node.key"
-allowlist_path = "/etc/uc2/allowlist.toml"' ;;
+allowlist_path = "/etc/uc2/allowlist.toml"'
+      # A cadence, not on-demand: purge drops the journal only below a
+      # complete instant, so without one the log grows until the disk fills.
+      interval=1073741824 ;;
     *) die "render_node_toml: profile must be local or deploy" ;;
   esac
   cat <<EOT
@@ -108,10 +114,11 @@ below_snapshot_slack_bytes = 1048576
 [services]
 names = ["$FSM_NAME"]
 
-# Genesis seed only. snapshot_interval_bytes = 0 means instants are
-# operator-commanded (uc2ctl snapshot); set UC_SNAPSHOT_INTERVAL for a cadence.
+# Genesis seed only: a running cluster changes it with uc2ctl settings apply.
+# The leader takes an instant every snapshot_interval_bytes of log; 0 means
+# only when an operator commands one (uc2ctl snapshot).
 [settings]
-snapshot_interval_bytes = ${UC_SNAPSHOT_INTERVAL:-0}
+snapshot_interval_bytes = ${UC_SNAPSHOT_INTERVAL:-$interval}
 snapshot_target = "all"
 
 [log]

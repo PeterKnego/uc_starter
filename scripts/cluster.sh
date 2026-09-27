@@ -24,7 +24,7 @@
 #   UC_ROOT         cluster state (default $HOME/.uc-starter/<app>). NOT /tmp:
 #                   nodes refuse RAM-backed filesystems.
 #   UC_PORT_OFFSET  added to every port below (default 0; the smoke test uses 10)
-#   UC_SNAPSHOT_INTERVAL  genesis snapshot_interval_bytes (default 0 = on demand)
+#   UC_SNAPSHOT_INTERVAL  genesis snapshot_interval_bytes (local default 0 = on demand)
 #   UC_CONFIRM_PIN  must be "yes" for `ctl N upgrade pin …` — a one-way door
 #
 # Ports (BASE_PORT from uc-app.env): nodes UDP BASE..BASE+2, gateways TCP
