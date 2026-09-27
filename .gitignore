@@ -12,5 +12,6 @@
 /cloud-infra/terraform/.terraform/
 /cloud-infra/terraform/.terraform.lock.hcl
 /cloud-infra/terraform/*.tfstate*
+/cloud-infra/terraform/*.tfplan
 /cloud-infra/inventory/hosts.yml
 /cloud-infra/inventory/hosts.env

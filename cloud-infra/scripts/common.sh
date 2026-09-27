@@ -40,15 +40,15 @@ public_csv()  { echo "$(pub 0),$(pub 1),$(pub 2)"; }
 private_csv() { echo "$(priv 0),$(priv 1),$(priv 2)"; }
 public_members() { echo "$(pub 0):$(GW_PORT 0),$(pub 1):$(GW_PORT 1),$(pub 2):$(GW_PORT 2)"; }
 cidr_hint() {
-  echo "cannot reach host $1 ($(pub "$1")) over SSH. If your public IP changed since cloud-up, set allow_ssh_cidr (and allow_client_cidr) in cloud-infra/terraform.tfvars to your new IP/32 (curl -s https://checkip.amazonaws.com) and re-run make cloud-up — it only updates the firewall."
+  echo "cannot reach host $1 ($(pub "$1")) over SSH. If your public IP changed since cloud-up, set allow_ssh_cidr (and allow_client_cidr) in cloud-infra/terraform.tfvars to your new IP/32 (curl -s https://checkip.amazonaws.com) and re-run make cloud-up — a CIDR change only updates the firewall."
 }
 hssh() { # N CMD… → run CMD on host N; SSH failure (exit 255) dies with the CIDR hint
-  local n="$1" rc; shift
+  local n="$1" rc=0; shift
   mkdir -p "$SECRETS" && chmod 700 "$SECRETS"
+  # `|| rc=$?`: under a caller's set -e a bare failing ssh would exit before the hint.
   ssh -i "$SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
       -o UserKnownHostsFile="$SECRETS/known_hosts" -o ConnectTimeout="${CLOUD_SSH_TIMEOUT:-10}" \
-      -o LogLevel=ERROR "$SSH_USER@$(pub "$n")" "$@"
-  rc=$?
+      -o LogLevel=ERROR "$SSH_USER@$(pub "$n")" "$@" || rc=$?
   [ $rc = 255 ] && die "$(cidr_hint "$n")"
   return $rc
 }

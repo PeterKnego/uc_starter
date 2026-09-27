@@ -28,5 +28,8 @@ mach="$(uname -m)"; [ "$mach" = arm64 ] && mach=aarch64
 if [ "$(uname -s)" != Linux ] || [ "$arch" != "$mach" ]; then
   command -v cargo-zigbuild >/dev/null || die "hosts are $arch Linux and this is $(uname -s) $mach: the bundle is cross-built — cargo install cargo-zigbuild --locked"
   command -v zig >/dev/null || python3 -c 'import ziglang' 2>/dev/null || die "zig not found: brew install zig (macOS) or pip3 install ziglang"
+else   # native: package.sh bundles .uc/bin as it is
+  v="$("$UC_BIN/uc2-node" --version 2>/dev/null || true)"
+  case " $v " in *" $UC_VERSION "*) ;; *) die "no ultima_cluster $UC_VERSION in .uc/bin (found: ${v:-nothing}) — run make bins" ;; esac
 fi
 echo "preflight: ok (cloud=$cloud arch=$arch owner=${TF_VAR_owner:-})"

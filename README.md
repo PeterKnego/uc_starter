@@ -148,6 +148,7 @@ runs.
 | `upgrade-drill` | the pinned upgrade on the local cluster (asks first: one-way door) |
 | `package` | deploy bundle: `make package HOSTS=ip0,ip1,ip2` |
 | `uc-upgrade` | move to another UC release: `make uc-upgrade VERSION=x` |
+| `cloud-plan` | what cloud-up would create, change or destroy (read-only) |
 | `cloud-up` | 3 cloud hosts + deploy (billable; asks first) — cloud-infra/README.md |
 | `cloud-deploy` | rebuild + redeploy the app, same FSM_VERSION only |
 | `cloud-test` | demo, MTU and a host failover on the cloud cluster |
@@ -155,7 +156,7 @@ runs.
 | `cloud-status` | hosts, uptime vs ttl_hours, leader, /readyz |
 | `cloud-logs` | `make cloud-logs HOST=0 PROC=node\|service\|gateway` |
 | `cloud-destroy` | tear the cloud hosts down |
-| `cloud-oneshot` | up, test, destroy |
+| `cloud-oneshot` | up, test, destroy (destroys on Ctrl-C too) |
 
 `scripts/cluster.sh` does the finer work (run it with no arguments for its
 usage): stop, kill or start one process, print the leader, run `uc2ctl`

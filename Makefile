@@ -7,7 +7,7 @@ export APP_NAME APP_ID FSM_NAME BASE_PORT
 .DEFAULT_GOAL := help
 .PHONY: help next bins build up down status restart-services demo kill-leader test test-cluster lint check todo done skip \
         diffreplay corpus upgrade-check snapshot-drill observe upgrade-drill package uc-upgrade \
-        cloud-up cloud-deploy cloud-test cloud-bench cloud-status cloud-logs cloud-destroy cloud-oneshot
+        cloud-plan cloud-up cloud-deploy cloud-test cloud-bench cloud-status cloud-logs cloud-destroy cloud-oneshot
 
 help: ## this list
 	@grep -hE '^[a-z-]+:.*## ' $(firstword $(MAKEFILE_LIST)) | sed 's/:.*## /\t/' | expand -t22
@@ -63,6 +63,8 @@ package: ## deploy bundle: make package HOSTS=ip0,ip1,ip2
 	HOSTS=$(HOSTS) scripts/package.sh
 uc-upgrade: ## move to another UC release: make uc-upgrade VERSION=x
 	scripts/uc-upgrade.sh $(VERSION)
+cloud-plan: ## what cloud-up would create, change or destroy (read-only)
+	@$(MAKE) -s -C cloud-infra cloud-plan
 cloud-up: ## 3 cloud hosts + deploy (billable; asks first) — cloud-infra/README.md
 	$(MAKE) -C cloud-infra cloud-up
 cloud-deploy: ## rebuild + redeploy the app, same FSM_VERSION only
@@ -77,5 +79,5 @@ cloud-logs: ## make cloud-logs HOST=0 PROC=node|service|gateway
 	@$(MAKE) -s -C cloud-infra cloud-logs HOST=$(HOST) PROC=$(PROC) LINES=$(or $(LINES),40)
 cloud-destroy: ## tear the cloud hosts down
 	$(MAKE) -C cloud-infra cloud-destroy
-cloud-oneshot: ## up, test, destroy
+cloud-oneshot: ## up, test, destroy (destroys on Ctrl-C too)
 	$(MAKE) -C cloud-infra cloud-oneshot

@@ -114,6 +114,90 @@ echo "$out" | grep -q 'nothing was destroyed' || fail "corrupt state: $out"
 [ -e cloud-infra/.secrets/admin.key ] || fail "destroy removed admin.key for a state it could not read"
 rm -f cloud-infra/terraform/terraform.tfstate cloud-infra/.secrets/admin.key cloud-infra/inventory/hosts.env cloud-infra/terraform.tfvars
 
+# cloud-up refuses and builds before anything bills (spec §9): preflight wants
+# this UC release in .uc/bin on a native build, and the build runs before apply.
+TV="$OUT/fake-tfv"; mkdir -p "$TV"
+printf '#!/bin/sh\necho '"'"'{"terraform_version":"1.9.8"}'"'"'\n' >"$TV/terraform"; chmod +x "$TV/terraform"
+: >"$OUT/idkey"
+{ grep -vE '^(arch|ssh_private_key_file)[[:space:]]' cloud-infra/example.tfvars
+  echo "arch = \"$mach\""; echo "ssh_private_key_file = \"$OUT/idkey\""; } >cloud-infra/terraform.tfvars
+printf 'HCLOUD_TOKEN=abc\n' >cloud-infra/.env
+pmk() { PATH="$TV:$PATH" make -s -C cloud-infra "$@"; }
+pmk cloud-preflight >/dev/null || fail "preflight refused a complete native setup: $(pmk cloud-preflight 2>&1)"
+mv .uc/bin/uc2-node "$OUT/uc2-node.real"
+out="$(pmk cloud-preflight 2>&1)" && fail "preflight passed without .uc/bin/uc2-node"
+echo "$out" | grep -q 'run make bins' || fail "preflight without bins: $out"
+printf '#!/bin/sh\necho "uc2-node 2.12.0"\n' >.uc/bin/uc2-node; chmod +x .uc/bin/uc2-node
+out="$(pmk cloud-preflight 2>&1)" && fail "preflight accepted .uc/bin from another UC release"
+echo "$out" | grep -q 'run make bins' || fail "preflight with another UC: $out"
+mv "$OUT/uc2-node.real" .uc/bin/uc2-node
+order="$(make -n -C cloud-infra cloud-up 2>/dev/null | sed -nE 's|.*scripts/([a-z]+)\.sh.*|\1|p' | tr '\n' ' ')"
+[ "$order" = "preflight build apply inventory deploy " ] || fail "cloud-up order (build must come before apply): $order"
+make -n -C cloud-infra cloud-plan 2>/dev/null | grep -q 'scripts/apply.sh --plan' || fail "no make cloud-plan"
+CLOUD_INFRA_MAKE=1 cloud-infra/scripts/build.sh >/dev/null 2>&1 || fail "build.sh failed on the skeleton"
+cp src/lib.rs "$OUT/lib.rs.orig"; echo 'this does not compile' >>src/lib.rs
+out="$(CLOUD_INFRA_MAKE=1 cloud-infra/scripts/build.sh 2>&1)" && fail "build.sh passed a compile error"
+cp "$OUT/lib.rs.orig" src/lib.rs
+rm -f cloud-infra/.env cloud-infra/terraform.tfvars
+
+# apply.sh: plan first; a plan that destroys or replaces hosts is refused
+# unless REPLACE=1, which also forgets the replaced hosts' SSH host keys.
+TP="$OUT/fake-tfplan"; mkdir -p "$TP"
+cat >"$TP/terraform" <<EOF
+#!/bin/sh
+for a; do case "\$a" in -chdir=*) ;; *) sub="\$a"; break ;; esac; done
+echo "\$sub" >>"$OUT/tf.log"
+[ "\$sub" = show ] && cat "$OUT/plan.json"
+exit 0
+EOF
+chmod +x "$TP/terraform"
+printf 'CLOUD=hetzner\nSSH_USER=root\nSSH_KEY=/nonexistent\nNODE0_PUBLIC=192.0.2.1\nNODE1_PUBLIC=192.0.2.2\nNODE2_PUBLIC=192.0.2.3\n' >cloud-infra/inventory/hosts.env
+rm -f "$OUT/hk" "$OUT/hk.pub"; ssh-keygen -q -t ed25519 -N '' -f "$OUT/hk"
+hkeys() { mkdir -p cloud-infra/.secrets; for i in 1 2 3; do echo "192.0.2.$i $(cut -d' ' -f1,2 "$OUT/hk.pub")"; done >cloud-infra/.secrets/known_hosts; echo x >cloud-infra/.secrets/deployed-code-hash; }
+ap() { : >"$OUT/tf.log"; env CLOUD_INFRA_MAKE=1 PATH="$TP:$PATH" "$@" cloud-infra/scripts/apply.sh ${APPLY_ARG:-} 2>&1; }
+echo '{"resource_changes":[{"address":"module.hetzner[0].hcloud_firewall.this","change":{"actions":["update"]}},{"address":"module.hetzner[0].hcloud_server.node[1]","change":{"actions":["delete","create"]}}]}' >"$OUT/plan.json"
+hkeys
+out="$(ap)" && fail "apply.sh accepted a plan that replaces a host"
+echo "$out" | grep -q 'REPLACE=1' || fail "replace refused without naming REPLACE=1: $out"
+echo "$out" | grep -q 'hcloud_server.node\[1\]' || fail "replace refusal does not name the resource: $out"
+grep -qx apply "$OUT/tf.log" && fail "apply.sh ran terraform apply on a refused plan"
+grep -q '^192.0.2.2 ' cloud-infra/.secrets/known_hosts || fail "a refused plan changed known_hosts"
+[ ! -e cloud-infra/terraform/cloud-up.tfplan ] || fail "apply.sh left its plan file"
+out="$(APPLY_ARG=--plan ap)" || fail "cloud-plan failed: $out"
+echo "$out" | grep -q 'would DESTROY or REPLACE' || fail "cloud-plan does not name the replacement: $out"
+grep -qx apply "$OUT/tf.log" && fail "cloud-plan ran terraform apply"
+out="$(ap REPLACE=1)" || fail "apply.sh REPLACE=1 refused: $out"
+grep -qx apply "$OUT/tf.log" || fail "apply.sh REPLACE=1 did not apply"
+grep -q '^192.0.2.2 ' cloud-infra/.secrets/known_hosts && fail "REPLACE=1 kept the replaced host's key"
+grep -q '^192.0.2.1 ' cloud-infra/.secrets/known_hosts || fail "REPLACE=1 dropped a kept host's key"
+[ ! -e cloud-infra/.secrets/deployed-code-hash ] || fail "REPLACE=1 kept deployed-code-hash (deploy.sh would skip the new hosts)"
+echo '{"resource_changes":[{"address":"module.hetzner[0].hcloud_firewall.this","change":{"actions":["update"]}}]}' >"$OUT/plan.json"
+hkeys
+out="$(ap)" || fail "apply.sh refused an in-place update: $out"
+grep -qx apply "$OUT/tf.log" || fail "apply.sh did not apply an in-place update"
+[ -e cloud-infra/.secrets/deployed-code-hash ] || fail "an in-place update dropped deployed-code-hash"
+rm -f cloud-infra/inventory/hosts.env cloud-infra/.secrets/known_hosts cloud-infra/.secrets/deployed-code-hash
+
+# cloud-oneshot destroys even when it is killed part-way (TERM here; INT/HUP alike).
+cat >"$OUT/fakemake" <<EOF
+#!/bin/sh
+echo "\$1" >>"$OUT/oneshot.log"
+[ "\$1" = cloud-up ] && [ -n "\${ONESHOT_HANG:-}" ] && exec sleep 30
+exit 0
+EOF
+chmod +x "$OUT/fakemake"
+: >"$OUT/oneshot.log"; make -s -C cloud-infra cloud-oneshot MAKE="$OUT/fakemake" >/dev/null 2>&1 || fail "oneshot with passing steps failed"
+[ "$(tr '\n' ' ' <"$OUT/oneshot.log")" = "cloud-up cloud-test cloud-destroy " ] || fail "oneshot steps: $(cat "$OUT/oneshot.log")"
+if command -v setsid >/dev/null; then
+  : >"$OUT/oneshot.log"
+  ONESHOT_HANG=1 setsid make -s -C cloud-infra cloud-oneshot MAKE="$OUT/fakemake" >/dev/null 2>&1 &
+  pid=$!
+  for _ in $(seq 100); do grep -q cloud-up "$OUT/oneshot.log" && break; sleep 0.1; done
+  kill -TERM -- "-$pid"; wait "$pid" || true
+  grep -qx cloud-destroy "$OUT/oneshot.log" || fail "a killed cloud-oneshot did not destroy: $(tr '\n' ' ' <"$OUT/oneshot.log")"
+  grep -qx cloud-test "$OUT/oneshot.log" && fail "a killed cloud-oneshot went on to cloud-test"
+else echo "note: setsid not installed — interrupted oneshot not checked"; fi
+
 # --- Task 7: deploy — guards and playbook syntax
 g() { bash -c ". cloud-infra/scripts/common.sh; $1" 2>&1; }
 g 'fsm_guard_decide 1.0.0 1.0.0' >/dev/null || fail "fsm guard refused the same version"
@@ -161,6 +245,36 @@ NODE2_PRIVATE=10.10.1.12
 EOF
 out="$(CLOUD_INFRA_MAKE=1 CLOUD_SSH_TIMEOUT=2 cloud-infra/scripts/status.sh 2>&1)" && fail "status passed against unreachable hosts"
 echo "$out" | grep -q 'allow_ssh_cidr' || fail "unreachable host: no CIDR hint: $out"
+# deploy.sh runs under set -e: an unreachable node0 must still get the hint.
+FS="$OUT/fake-ssh"; mkdir -p "$FS"
+printf '#!/bin/sh\necho "ssh: connect to host x port 22: Connection timed out" >&2; exit 255\n' >"$FS/ssh"; chmod +x "$FS/ssh"
+out="$(CLOUD_INFRA_MAKE=1 PATH="$FS:$PATH" cloud-infra/scripts/deploy.sh 2>&1)" && fail "deploy.sh passed against unreachable hosts"
+echo "$out" | grep -q 'allow_ssh_cidr' || fail "deploy.sh, unreachable host: no CIDR hint: $out"
+# A cloud-up that failed after node0 first started resumes (spec §10): a stopped
+# node's control page still reads, so only a completed deploy (deployed-code-hash)
+# plus a running node0 counts as "already running".
+cat >"$FS/ssh" <<'EOF'
+#!/bin/sh
+for a; do last="$a"; done
+case "$last" in
+  true) exit 0 ;;
+  *"systemctl is-active"*) exit "${FAKE_NODE0_ACTIVE:-3}" ;;
+  *"uc2ctl status"*) exit 0 ;;
+  *) exit 1 ;;
+esac
+EOF
+printf '#!/bin/sh\necho "ansible-playbook ran"; exit 1\n' >"$FS/ansible-playbook"; chmod +x "$FS/ssh" "$FS/ansible-playbook"
+sed "s/^ARCH=.*/ARCH=$mach/" cloud-infra/inventory/hosts.env >"$OUT/hosts.env" && cp "$OUT/hosts.env" cloud-infra/inventory/hosts.env
+dep() { env CLOUD_INFRA_MAKE=1 PATH="$FS:$PATH" "$@" cloud-infra/scripts/deploy.sh 2>&1; }
+rm -f cloud-infra/.secrets/deployed-code-hash
+out="$(dep FAKE_NODE0_ACTIVE=0)" && fail "deploy.sh (fake ansible fails) exited 0 after a partial deploy"
+echo "$out" | grep -q 'already running' && fail "deploy.sh skipped a deploy that never completed: $out"
+echo "$out" | grep -q 'ansible-playbook ran' || fail "deploy.sh did not redeploy after a partial deploy: $out"
+echo x >cloud-infra/.secrets/deployed-code-hash
+out="$(dep FAKE_NODE0_ACTIVE=3)" && fail "deploy.sh (fake ansible fails) exited 0 with node0 stopped"
+echo "$out" | grep -q 'ansible-playbook ran' || fail "deploy.sh did not redeploy with node0 stopped: $out"
+out="$(dep FAKE_NODE0_ACTIVE=0)" || fail "deploy.sh on a complete, running cluster failed: $out"
+echo "$out" | grep -q 'already running' || fail "deploy.sh redeployed a complete, running cluster: $out"
 out="$(CLOUD_INFRA_MAKE=1 cloud-infra/scripts/logs.sh 7 node 10 2>&1)" && fail "logs accepted HOST=7"
 out="$(CLOUD_INFRA_MAKE=1 cloud-infra/scripts/logs.sh 0 disk 10 2>&1)" && fail "logs accepted PROC=disk"
 rm -f cloud-infra/inventory/hosts.env cloud-infra/.secrets/deployed-code-hash
@@ -187,7 +301,7 @@ assert not missing, ("should ask but does not", missing)
 over = [c for c in must_not if any(fnmatch.fnmatch(c, a) for a in ask)]
 assert not over, ("asks but should not", over)
 PY
-for p in cloud-infra/.env cloud-infra/.secrets/admin.key cloud-infra/terraform.tfvars cloud-infra/terraform/terraform.tfstate cloud-infra/inventory/hosts.yml cloud-infra/inventory/hosts.env; do
+for p in cloud-infra/.env cloud-infra/.secrets/admin.key cloud-infra/terraform.tfvars cloud-infra/terraform/terraform.tfstate cloud-infra/terraform/cloud-up.tfplan cloud-infra/inventory/hosts.yml cloud-infra/inventory/hosts.env; do
   git check-ignore -q "$p" || fail "$p is not gitignored"   # cargo-generate made the project a git repo
 done
 [ -f .claude/skills/cloud-infra/SKILL.md ] || fail "no cloud-infra skill"
@@ -196,6 +310,12 @@ grep -q '^9\. \*\*Cloud commands' AGENTS.md || fail "AGENTS.md has no hard rule 
 # Rule-9 bypass: a cloud script run directly (not through make cloud-*) refuses.
 out="$(cloud-infra/scripts/status.sh 2>&1)" && fail "status.sh ran directly without CLOUD_INFRA_MAKE"
 echo "$out" | grep -q 'run this through make cloud-' || fail "direct script run: wrong message: $out"
+
+# package.sh prints two lines under set -e; piped into head it can die of
+# SIGPIPE, and under pipefail that fails the caller (after the hosts exist).
+hits="$(grep -nE 'package\.sh[^|]*\|[[:space:]]*head' cloud-infra/scripts/*.sh "$HERE/../.github/workflows/"*.yml "$HERE/cloud.sh" || true)"
+[ -z "$hits" ] || fail "package.sh piped into head (SIGPIPE under pipefail):
+$hits"
 
 # --- Task 11: the cloud path runs on macOS's stock bash 3.2
 hits="$(grep -nE 'mapfile|readarray|declare -A|\$\{[A-Za-z_]+(,,|\^\^)\}|sed -i|^[^#]*[^_]sha256sum' \

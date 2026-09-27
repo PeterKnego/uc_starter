@@ -9,6 +9,9 @@
 #   ARCH      the hosts' CPU, x86_64|aarch64 (default: this machine's). When it
 #             is not this machine's, or this is not Linux, the app is
 #             cross-built with cargo-zigbuild and UC comes from .uc/dist/ARCH.
+# --build-only: the build steps alone (no HOSTS needed), so make cloud-up can
+# fail on a compile error before it creates hosts; the bundle run then
+# finds everything in cargo's cache.
 # shellcheck source=scripts/lib.sh
 . "$(dirname "$0")/lib.sh"
 set -e   # a failed cp/sed/tar must not leave a bundle that looks complete
@@ -26,8 +29,11 @@ parse_three() { # NAME VALUE → PARSED=(three distinct host addresses), or die
   done
   [ "$(printf '%s\n' "${PARSED[@]}" | sort -u | wc -l | tr -d ' ')" = 3 ] || die "$name must be three different machines"
 }
-parse_three HOSTS "${HOSTS:-}"; H=("${PARSED[@]}")
-G=(); if [ -n "${GATEWAYS:-}" ]; then parse_three GATEWAYS "$GATEWAYS"; G=("${PARSED[@]}"); fi
+build_only=false; [ "${1:-}" = --build-only ] && build_only=true
+if ! $build_only; then
+  parse_three HOSTS "${HOSTS:-}"; H=("${PARSED[@]}")
+  G=(); if [ -n "${GATEWAYS:-}" ]; then parse_three GATEWAYS "$GATEWAYS"; G=("${PARSED[@]}"); fi
+fi
 mach="$(uname -m)"; [ "$mach" = arm64 ] && mach=aarch64
 ARCH="${ARCH:-$mach}"
 case "$ARCH" in x86_64|aarch64) ;; *) die "ARCH must be x86_64 or aarch64 (got '$ARCH')" ;; esac
@@ -47,6 +53,7 @@ else
   cargo zigbuild --release -q --target "$triple.$GLIBC_FLOOR" || exit 1
   BIN="$(app_target_dir)/$triple/release"
 fi
+if $build_only; then echo "built for $ARCH Linux: $BIN"; exit 0; fi
 ver="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
 D="dist/$APP_NAME-$ver-$ARCH"; rm -rf "$D" "$D.tar.gz"; mkdir -p "$D/bin" "$D/systemd" "$D/hosts"
 cp "$UCB"/uc2-node "$UCB"/uc2ctl "$UCB"/uc2-gateway "$BIN/$APP_NAME-service" "$BIN/$APP_NAME" "$D/bin/"

@@ -6,14 +6,15 @@ tear it down again. From the project root:
 
 | command | effect |
 |---|---|
-| `make cloud-up` | creates or updates the three hosts (Terraform) and deploys the app onto them (Ansible) |
+| `make cloud-plan` | read-only: what `cloud-up` would create, change or destroy |
+| `make cloud-up` | builds the app, creates or updates the three hosts (Terraform) and deploys the app onto them (Ansible); run again after a failure, it resumes |
 | `make cloud-deploy` | rebuilds and restarts the app on the existing hosts; no infrastructure change |
 | `make cloud-test` | demo, probe, a host failover and an MTU check through the gateways; records the `cloud` stamp |
 | `make cloud-bench` | runs the client's `bench` subcommand, load from a follower host |
 | `make cloud-status` | hosts, uptime vs `ttl_hours`, `uc2ctl status`, `/readyz` on every node |
 | `make cloud-logs` | tails one host's journal for one process (`HOST=… PROC=…`) |
 | `make cloud-destroy` | destroys the hosts (Terraform) and clears the local inventory and secrets |
-| `make cloud-oneshot` | `cloud-up`, then `cloud-test`, then always `cloud-destroy` |
+| `make cloud-oneshot` | `cloud-up`, then `cloud-test`, then always `cloud-destroy` — also on Ctrl-C |
 
 The hosts bill until `make cloud-destroy` runs, whether or not anything else
 in this list ever did.
@@ -36,6 +37,10 @@ pip3 install --user ansible-core ziglang
 apt-get install jq
 cargo install cargo-zigbuild --locked
 ```
+
+`make cloud-up` refuses to start without `make bins` (the UC binaries in
+`.uc/bin` it bundles for same-CPU Linux hosts), and it builds the app before
+it creates anything, so a compile error costs nothing.
 
 The devcontainer already has all of these. Note: `make up` — the *local*
 cluster — still needs Linux or the devcontainer; the `cloud-*` targets above
@@ -73,6 +78,16 @@ Copy `cloud-infra/example.tfvars` to `cloud-infra/terraform.tfvars`
 also set `allow_open_cidr = true` — that opens SSH or the gateways to the
 whole internet, so it takes a deliberate opt-in.
 
+### Editing it after `cloud-up`
+
+`make cloud-up` applies exactly the plan it shows. A change that only updates
+resources in place (the CIDRs, `ttl_hours`) goes straight through. A change
+that destroys or replaces a host — `region`, `arch`, an `instance_type` the
+cloud cannot resize, or a new `ssh_public_key` on Hetzner — is refused, because
+a replaced host comes back empty: its log, keys and data are gone. `make
+cloud-plan` shows which kind a change is. If you mean it, `make cloud-up
+REPLACE=1`; for a clean cluster, `make cloud-destroy` then `make cloud-up`.
+
 ## SSH key
 
 - **Native** (running directly on your machine): the file named in
@@ -103,12 +118,15 @@ If SSH or the gateways start timing out after working before, your public IP
 most likely changed. Update `allow_ssh_cidr` (and `allow_client_cidr` if it
 was set separately) in `cloud-infra/terraform.tfvars` to your new address —
 `curl -s https://checkip.amazonaws.com` prints it — then run `make cloud-up`
-again; it only updates the firewall, it does not recreate the hosts.
+again; a CIDR change only updates the firewall (`make cloud-plan` shows it).
 
 ## Costs
 
 `make cloud-status` shows each host's uptime against `ttl_hours` and flags
 hosts that have run past it. `make cloud-oneshot` destroys the hosts itself
-once it is done, so it never needs a reminder — everything else in the
-command table above leaves the hosts running (and billing) until you run
+once it is done, and also when you press Ctrl-C, it is sent TERM, or its
+terminal closes. A second Ctrl-C stops that destroy too, and a process killed
+outright (`kill -9`, an agent's command timeout) cannot clean up: in both
+cases run `make cloud-status`, then `make cloud-destroy`. Everything else in
+the command table above leaves the hosts running (and billing) until you run
 `make cloud-destroy`.

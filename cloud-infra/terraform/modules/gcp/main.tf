@@ -81,4 +81,10 @@ resource "google_compute_instance" "node" {
   metadata = {
     ssh-keys = "ubuntu:${var.ssh_public_key}"
   }
+
+  # The zone is picked once, from the zones UP at the first apply; a later
+  # apply must not move (replace) the hosts because that list changed.
+  lifecycle {
+    ignore_changes = [zone]
+  }
 }

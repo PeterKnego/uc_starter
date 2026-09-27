@@ -238,8 +238,27 @@ or `cloud-logs`.
 
 **Fix.** Set `allow_ssh_cidr` (and `allow_client_cidr`, which defaults to it)
 to `$(curl -s https://checkip.amazonaws.com)/32` in
-`cloud-infra/terraform.tfvars`, then `make cloud-up` again — it only updates
-the firewall when the hosts already exist.
+`cloud-infra/terraform.tfvars`, then `make cloud-up` again — a CIDR change only
+updates the firewall (`make cloud-plan` shows what it would change).
+
+## Cloud: `this terraform.tfvars change destroys or replaces`
+
+**Symptom.** `make cloud-up` stops before changing anything:
+
+```
+apply.sh: this terraform.tfvars change destroys or replaces:
+module.hetzner[0].hcloud_server.node[0]
+…
+```
+
+**Cause.** Since the hosts were created, `cloud-infra/terraform.tfvars`
+changed in a way the cloud cannot apply in place: `region`, `arch`, an
+`instance_type` it cannot resize, or a new `ssh_public_key` on Hetzner. A
+replaced host comes back empty, with a new SSH host key.
+
+**Fix.** Undo the change (`make cloud-plan` shows what it would destroy). If you
+mean it: `make cloud-up REPLACE=1`, or, for a clean cluster, `make
+cloud-destroy`, then `make cloud-up`.
 
 ## `no serving leader after 30s`
 

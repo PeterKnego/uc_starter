@@ -557,4 +557,6 @@ current code (it records the proof; `make next` shows it). No cloud account:
 - Changing code after `cloud-up` and expecting `cloud-test` to count: it says "not recorded" until `make cloud-deploy`.
 - `cloud-deploy` after bumping `FSM_VERSION`: it refuses. A disposable cluster: destroy and up. One you keep: Step 12's pinned upgrade.
 - An `arch` that does not match `instance_type`: Terraform refuses before creating anything.
+- Changing `region`, `arch` or the SSH key after `cloud-up`: it would replace the hosts, so `cloud-up` refuses. `make cloud-plan` shows it; `make cloud-up REPLACE=1` if you mean it.
+- Interrupting a run: `cloud-oneshot` destroys on Ctrl-C, but anything else leaves hosts billing — `make cloud-status`, then `make cloud-destroy`.
 - `allow_ssh_cidr = "0.0.0.0/0"`: refused unless you also set `allow_open_cidr = true`.

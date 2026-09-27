@@ -21,22 +21,23 @@ TF_VAR_base_port := $(BASE_PORT)
 CLOUD_INFRA_MAKE := 1
 export
 
-TF     := terraform -chdir=terraform
-TFVARS := $(CURDIR)/terraform.tfvars
 S      := scripts
 DURATION ?= 10
 INFLIGHT ?= 32
 LINES    ?= 40
 
-.PHONY: cloud-env-show cloud-preflight cloud-up cloud-deploy cloud-test cloud-bench cloud-status cloud-logs cloud-destroy cloud-oneshot cloud-inventory
+.PHONY: cloud-env-show cloud-preflight cloud-plan cloud-up cloud-deploy cloud-test cloud-bench cloud-status cloud-logs cloud-destroy cloud-oneshot cloud-inventory
 
 cloud-env-show:   ; @$(S)/env-show.sh
 cloud-preflight:  ; @$(S)/preflight.sh
 cloud-inventory:  ; @$(S)/inventory.sh
+cloud-plan: cloud-preflight ; @$(S)/apply.sh --plan
 
+# build before apply: a compile error must fail before any host bills.
+# apply.sh refuses a plan that destroys or replaces hosts unless REPLACE=1.
 cloud-up: cloud-preflight
-	$(TF) init -input=false >/dev/null
-	$(TF) apply -auto-approve -input=false -var-file=$(TFVARS)
+	$(S)/build.sh
+	$(S)/apply.sh
 	$(S)/inventory.sh
 	$(S)/deploy.sh
 
@@ -50,5 +51,8 @@ cloud-status:  ; @$(S)/status.sh
 cloud-logs:    ; @$(S)/logs.sh "$(HOST)" "$(PROC)" "$(LINES)"
 cloud-destroy: ; $(S)/destroy.sh
 
+# Ctrl-C, a kill (TERM) or a closed terminal (HUP) still destroys the hosts;
+# a second Ctrl-C stops that destroy too (then run make cloud-destroy).
 cloud-oneshot:
-	$(MAKE) cloud-up && $(MAKE) cloud-test; rc=$$?; $(MAKE) cloud-destroy; exit $$rc
+	@trap 'trap - INT TERM HUP; echo "cloud-oneshot interrupted: destroying the hosts" >&2; $(MAKE) cloud-destroy; exit 130' INT TERM HUP; \
+	$(MAKE) cloud-up && $(MAKE) cloud-test; rc=$$?; trap - INT TERM HUP; $(MAKE) cloud-destroy; exit $$rc
