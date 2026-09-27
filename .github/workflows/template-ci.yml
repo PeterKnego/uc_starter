@@ -83,7 +83,7 @@ jobs:
           D="$HOME/scratch/uc_starter-gen/mac"; rm -rf "$D"; template-tests/gen.sh "$D"
           cd "$D/demo-app"
           for a in x86_64 aarch64; do
-            b="$(HOSTS=10.0.0.1,10.0.0.2,10.0.0.3 GATEWAYS=203.0.113.1,203.0.113.2,203.0.113.3 ARCH=$a /bin/bash scripts/package.sh | head -1)"
+            b="$(HOSTS=10.0.0.1,10.0.0.2,10.0.0.3 GATEWAYS=203.0.113.1,203.0.113.2,203.0.113.3 ARCH=$a /bin/bash scripts/package.sh | sed -n 1p)"
             mkdir -p "x-$a"; tar xzf "$b" -C "x-$a"
             want=x86-64; [ $a = aarch64 ] && want=aarch64
             for f in x-$a/*/bin/*; do file -b "$f" | grep -q "ELF 64-bit.*$want" || { echo "FAIL $f: $(file -b "$f")"; exit 1; }; done
