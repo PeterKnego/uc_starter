@@ -18,9 +18,11 @@ always needs you.
 3. **Plan.** For anything larger than one command, have the agent write the
    steps first: which files, which tests, which checks.
 4. **Implement**, in small diffs.
-5. **Determinism review.** Every diff that touches `src/commands.rs`,
-   `src/state.rs` or `src/snapshot.rs` goes past the `determinism-reviewer`
-   subagent before it is called done.
+5. **Determinism review.** Grep-level hazards are flagged at each edit by
+   the hook. Once per change, before it is committed, a diff that alters code
+   `apply`, `query`, `on_timer`, `freeze` or the snapshot run goes past the
+   `determinism-reviewer` subagent, which catches what a grep cannot
+   (overflow, panics on input, id-series shifts, mid-enum inserts).
 6. **`make check`.** Tests, fmt, clippy, the MSRV clippy and the determinism
    grep. A step is done when its check passes, not when the agent says so.
 7. **Diff replay before any `VERSION` bump.** A behaviour change to a state

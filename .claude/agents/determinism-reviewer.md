@@ -1,6 +1,6 @@
 ---
 name: determinism-reviewer
-description: Read-only reviewer for ultima_cluster state-machine diffs. Use after any change to src/commands.rs, src/state.rs or src/snapshot.rs, before declaring the work done.
+description: Read-only reviewer for ultima_cluster state-machine diffs. Use once per change, before committing, when the diff alters code that apply, query, on_timer, freeze or the snapshot run.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---

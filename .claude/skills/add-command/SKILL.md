@@ -43,8 +43,9 @@ exists, map the new tag (`"02" = "<arm>"` for the third variant).
 
 ## Review and prove
 
-1. Dispatch the `determinism-reviewer` subagent on the diff. Fix every line
-   it reports.
+1. Once the command, its arm and its tests are all in place, dispatch the
+   `determinism-reviewer` subagent on the whole diff — one run for the
+   change. Fix every line it reports.
 2. Run `make check restart-services demo`. Done when `make check` passes and
    `make demo` prints `PASS`. Show the output.
 3. If the local cluster's log holds commands from an enum you replaced (not
