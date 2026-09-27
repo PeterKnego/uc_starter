@@ -4,7 +4,7 @@ Run the app on three Linux machines under systemd: one UC node per machine,
 with your service and a gateway beside it. Three processes on one host are a
 majority of processes, not of machines; one power cut takes them all.
 
-> On Hetzner, AWS or GCP, `cloud-infra/` does every step below for you: WHAT-NEXT.md Step 14.
+> On Hetzner, AWS or GCP, `cloud-infra/` does every step below for you: TUTORIAL.md Step 14.
 
 In this guide `<APP_NAME>`, `<APP_ID>` and `<BASE_PORT>` are the values in
 your `uc-app.env`, and `ADDR0`, `ADDR1`, `ADDR2` are your three hosts' IPv4
@@ -204,7 +204,7 @@ Then, on your development machine: `make done STEP=deploy`.
   replace or remove a node later, use `sudo uc2ctl` (and add a new node's public
   key to every allowlist first).
 - **Upgrades.** A new `FSM_VERSION` goes through the pinned upgrade
-  (`WHAT-NEXT.md` Step 12, and UC's *Upgrade an application*). A new UC
+  (`TUTORIAL.md` Step 12, and UC's *Upgrade an application*). A new UC
   release is a whole-cluster stop and start: see [Upgrade ultima_cluster](upgrade-uc.md).
 
 Upstream: [Run a cluster on real hosts](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/run-a-cluster.md),

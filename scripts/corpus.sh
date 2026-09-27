@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # corpus.sh — capture a diff-replay corpus from the running cluster with the
-# CURRENT (old) code, and keep that binary as the "old" side (WHAT-NEXT.md,
+# CURRENT (old) code, and keep that binary as the "old" side (TUTORIAL.md,
 # Step 12). Run it BEFORE you change the code.
 #
 # The traffic is scripts/demo.sh, run once below the instant (so the snapshot

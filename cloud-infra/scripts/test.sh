@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # test.sh — the cloud proof: your demo through the public gateways, 1408-byte
 # payloads across the private network, and a real host failover. Records the
-# `cloud` stamp (WHAT-NEXT.md Step 14) when the cluster runs your current code.
+# `cloud` stamp (TUTORIAL.md Step 14) when the cluster runs your current code.
 # shellcheck source=common.sh
 . "$(dirname "$0")/common.sh"
 require_make

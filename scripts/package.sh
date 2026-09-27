@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# package.sh — a deploy bundle for three hosts (WHAT-NEXT.md, Steps 13–14):
+# package.sh — a deploy bundle for three hosts (TUTORIAL.md, Steps 13–14):
 #   make package HOSTS=ip0,ip1,ip2 [GATEWAYS=pub0,pub1,pub2]
 # writes dist/<app>-<version>-<arch>.tar.gz: the binaries, the systemd units,
 # and a node.toml + gateway.toml per host (hosts/<HOSTS[i]>/). See

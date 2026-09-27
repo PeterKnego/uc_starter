@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # upgrade-drill.sh — the per-row pinned upgrade on the local cluster
-# (upstream docs/how-to/upgrade-an-application.md §1–§7; WHAT-NEXT.md, Step 12).
+# (upstream docs/how-to/upgrade-an-application.md §1–§7; TUTORIAL.md, Step 12).
 # THE PIN IS A ONE-WAY DOOR: after it commits the old binary is refused by
 # name on every node, and the only way back is the backups taken in step 2.
 #

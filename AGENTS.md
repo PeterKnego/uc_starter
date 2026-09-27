@@ -27,7 +27,7 @@ committed commands in the same order, so `apply` must be deterministic.
 | `scripts/` | cluster, tutor, drills, packaging; reach them through `make`. `scripts/demo.sh` and `scripts/probe.sh` (the drills' write and read) are the app's own |
 | `Makefile` | the one entry point |
 | `upgrade/intent.toml.example` | the diff-replay declaration starter |
-| `WHAT-NEXT.md` | the tutor path: 14 steps, each with Goal, Why, Do it yourself, Ask the agent, Done when, Common mistakes |
+| `TUTORIAL.md` | the tutor path: 14 steps, each with Goal, Why, Do it yourself, Ask the agent, Done when, Common mistakes |
 | `docs/` | `app-design.md` (the spec the code is held to), `concepts.md`, `how-to/`, `troubleshooting.md`, `ai-engineering.md` |
 | `.devcontainer/` | the macOS/Windows path: Rust + MSRV toolchains, `cosign`, `cargo-generate`, Claude Code |
 | `compose.yml`, `Dockerfile` | optional, disposable containerized 3-node cluster (README § Containers) |
@@ -119,7 +119,7 @@ When the developer asks "what next?", "where am I?", "help me continue" or
 similar:
 
 1. Run `scripts/next.sh --json`. Never infer the step from memory or chat.
-2. Read that step (`"step": N`) in `WHAT-NEXT.md`. Teach its **Why** in at
+2. Read that step (`"step": N`) in `TUTORIAL.md`. Teach its **Why** in at
    most 6 sentences, with its link. If `part1_just_completed` is true, first
    congratulate: Part 1 is complete. Mention every `detail` line, including
    `note: … is stale` lines about earlier steps.
@@ -133,7 +133,7 @@ similar:
    `scripts/next.sh --json`) and show its output. Only then say the step is
    done and offer the next one.
 
-Step 3 (`concepts`): ask the three check questions from `WHAT-NEXT.md`
+Step 3 (`concepts`): ask the three check questions from `TUTORIAL.md`
 Step 3, one at a time, and discuss each answer. When an answer is wrong or
 incomplete, explain, then ask that question again **in different words**,
 until it is answered correctly. Run `make done STEP=concepts` only after the
@@ -147,5 +147,5 @@ the check) or `complete` (id `done`: every step is finished).
 
 Link UC documentation only through the pinned
 `https://github.com/PeterKnego/ultima_cluster/blob/v<UC_VERSION>/…` URLs, as
-`docs/concepts.md` and `WHAT-NEXT.md` do. Never link `main`: it describes a
+`docs/concepts.md` and `TUTORIAL.md` do. Never link `main`: it describes a
 different release.

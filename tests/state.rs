@@ -1,4 +1,4 @@
-// TODO(app): rewrite these tests for your commands and queries — one test per command, plus the validate() refusals (WHAT-NEXT.md, Step 6).
+// TODO(app): rewrite these tests for your commands and queries — one test per command, plus the validate() refusals (TUTORIAL.md, Step 6).
 use app::{Command, Fsm, Query, QueryResponse, Response};
 use uc_service::{ApplyCtx, StateMachine};
 

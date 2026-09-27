@@ -104,7 +104,7 @@ if [ "$SKIP" != 1 ] && [ -f Cargo.toml ] && [ $TEMPLATE = 0 ]; then
 fi
 [ $TEMPLATE = 1 ] && echo "uc-upgrade: raw template (Cargo.toml has liquid placeholders) — skipping cargo update"
 
-# Doc links: ANY file in the project (README, WHAT-NEXT.md, .claude/**, an
+# Doc links: ANY file in the project (README, TUTORIAL.md, .claude/**, an
 # example TOML's comment, …) — excluding build/scratch trees a generated
 # project may already have, and the template's own template-tests/, whose
 # records quote what was true on the day they were written. `grep -I` skips

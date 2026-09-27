@@ -47,7 +47,7 @@ make next
   serving leader, then starts three services and three gateways.
 - `make demo` drives the skeleton app (a small key-value registry) through
   the gateways and prints `PASS`.
-- `make next` tells you which step of [`WHAT-NEXT.md`](WHAT-NEXT.md) you are
+- `make next` tells you which step of [`TUTORIAL.md`](TUTORIAL.md) you are
   on. It works that out from the repo, so it is right after a break too.
 
 `make down` stops the cluster and keeps its state. `make up FRESH=1` starts
@@ -104,7 +104,7 @@ project's `BASE_PORT`.
 
 ## With an agent, or without one
 
-The tutor is [`WHAT-NEXT.md`](WHAT-NEXT.md): fourteen steps, from running the
+The tutor is [`TUTORIAL.md`](TUTORIAL.md): fourteen steps, from running the
 skeleton to testing your own app on three cloud hosts. Each step says what to
 do yourself and what to ask an agent, and ends in a check that `make next`
 runs.
@@ -124,7 +124,7 @@ runs.
 | target | what it does |
 |---|---|
 | `help` | this list |
-| `next` | where am I on WHAT-NEXT.md? (agents: `scripts/next.sh --json`) |
+| `next` | where am I on TUTORIAL.md? (agents: `scripts/next.sh --json`) |
 | `bins` | download + verify the ultima_cluster binaries for `UC_VERSION` |
 | `build` | build the service and client (release) |
 | `up` | start 3 nodes + 3 services + 3 gateways (`FRESH=1` wipes state) |
@@ -179,7 +179,7 @@ against one node, fetch one node's metrics, print the cluster's directory.
 | `scripts/` | the cluster, the tutor, the drills and packaging, all reached through `make` |
 | `Makefile` | the one entry point |
 | `upgrade/intent.toml.example` | the starting point for a diff-replay declaration |
-| `WHAT-NEXT.md` | the tutor path |
+| `TUTORIAL.md` | the tutor path |
 | `docs/` | the design note, concepts, how-tos, AI engineering, troubleshooting |
 | `AGENTS.md`, `CLAUDE.md`, `.claude/` | the agent kit |
 | `.devcontainer/` | the container path for macOS and Windows |
@@ -218,7 +218,7 @@ pins the crates a teammate's build resolves.
 
 ## Read next
 
-- [`WHAT-NEXT.md`](WHAT-NEXT.md) — the tutor path, step by step
+- [`TUTORIAL.md`](TUTORIAL.md) — the tutor path, step by step
 - [`docs/app-design.md`](docs/app-design.md) — your app's design note
 - [`docs/concepts.md`](docs/concepts.md) — the model your code runs inside
 - How-tos: [add a command](docs/how-to/add-a-command.md) ·

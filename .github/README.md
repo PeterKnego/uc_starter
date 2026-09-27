@@ -34,7 +34,7 @@ running the skeleton app, drives it through the gateways until it prints
 
 - **A working skeleton**: a small key-value registry with its service, client,
   unit, property and three-node cluster tests.
-- **A tutor**: [`WHAT-NEXT.md`](../WHAT-NEXT.md), fourteen steps, from running
+- **A tutor**: [`TUTORIAL.md`](../TUTORIAL.md), fourteen steps, from running
   the skeleton to testing your own app on three cloud hosts. `make next` works
   out from the repo which step you are on.
 - **An agent kit**: [`AGENTS.md`](../AGENTS.md) for any coding agent; Claude

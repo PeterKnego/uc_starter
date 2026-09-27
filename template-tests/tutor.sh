@@ -13,7 +13,7 @@ unmark() { sed -i '/TODO(app)/d' "$@"; }
 
 [ "$(scripts/next.sh --list | tr '\n' ' ')" = "env skeleton concepts design commands state tests client failover snapshots observe upgrade deploy cloud " ] || fail "--list"
 # the doc and the checker agree on ids and order
-[ "$(grep -oE '<!-- step: [a-z-]+ -->' WHAT-NEXT.md | sed 's/<!-- step: \(.*\) -->/\1/' | tr '\n' ' ')" = "$(scripts/next.sh --list | tr '\n' ' ')" ] || fail "WHAT-NEXT.md step ids differ from next.sh --list"
+[ "$(grep -oE '<!-- step: [a-z-]+ -->' TUTORIAL.md | sed 's/<!-- step: \(.*\) -->/\1/' | tr '\n' ' ')" = "$(scripts/next.sh --list | tr '\n' ' ')" ] || fail "TUTORIAL.md step ids differ from next.sh --list"
 
 # F3: bash 3.2 (macOS's stock /bin/bash) raises "unbound variable" expanding
 # "${arr[@]}" on a declared-but-empty array under `set -u` — DETAIL/notes may
@@ -40,7 +40,7 @@ unmark tests/state.rs;                          expect "tests todo"
 unmark tests/*.rs;                              expect "tests todo"   # no check stamp yet
 scripts/stamp.sh check;                         expect "client todo"
 # src/bin/client.rs is part of `src`, so this edit is covered by the "tests"
-# step's whole-src hash too (WHAT-NEXT.md §5.2's "a hash of src/") — pin that
+# step's whole-src hash too (TUTORIAL.md §5.2's "a hash of src/") — pin that
 # whole-src staleness behaviour rather than stepping around it: the very next
 # poll reports "tests" stale again, even though client/demo.sh are done.
 unmark src/bin/client.rs scripts/demo.sh;       expect "tests stale"

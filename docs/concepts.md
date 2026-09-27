@@ -2,7 +2,7 @@
 
 The model your code runs inside, in the order you meet it. Each section ends
 with the upstream document that covers it in full. For the guided version, see
-`WHAT-NEXT.md` Step 3.
+`TUTORIAL.md` Step 3.
 
 ## The log and positions
 
@@ -141,7 +141,7 @@ diverge. So any change to what `apply` or `query` returns or stores is a new
 `FSM_VERSION`, proven with diff replay and rolled out with a **pinned
 upgrade**: every node installs the snapshot at one origin instant and replays
 only what comes after, and the old binary is refused by name from then on. A
-pin is a one-way door. `WHAT-NEXT.md` Step 12 walks through it.
+pin is a one-way door. `TUTORIAL.md` Step 12 walks through it.
 
 Upstream: [Upgrade an application](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/upgrade-an-application.md)
 and [the change taxonomy](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/application-sdlc.md#the-change-taxonomy).

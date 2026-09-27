@@ -246,7 +246,7 @@ cmd_ctl() {
     local n="$1"; shift
     case " $* " in
         *" upgrade pin "*|*" upgrade "*" pin "*)
-            [ "${UC_CONFIRM_PIN:-}" = yes ] || die "refusing 'upgrade pin' without UC_CONFIRM_PIN=yes — a pin is a one-way door (WHAT-NEXT.md, Step 12)" ;;
+            [ "${UC_CONFIRM_PIN:-}" = yes ] || die "refusing 'upgrade pin' without UC_CONFIRM_PIN=yes — a pin is a one-way door (TUTORIAL.md, Step 12)" ;;
     esac
     ctl "$n" "$@"
 }

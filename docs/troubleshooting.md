@@ -198,7 +198,7 @@ on your disposable local cluster, start over: `make up FRESH=1`.
 - *Real cluster.* An ordinary restart with the new build is refused, because
   it carries a different `FSM_VERSION` (see
   [concepts § Identity](concepts.md#identity-name-and-version)). The recovery
-  is the pinned upgrade (`WHAT-NEXT.md` Step 12), if its origin instant can
+  is the pinned upgrade (`TUTORIAL.md` Step 12), if its origin instant can
   still complete; if the dead services cannot complete it, restore the backup
   taken before the change on every node.
 

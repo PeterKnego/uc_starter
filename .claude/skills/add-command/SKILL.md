@@ -55,7 +55,7 @@ exists, map the new tag (`"02" = "<arm>"` for the third variant).
 
 A client that sends the new variant runs only after **every** service runs the
 new build. On a real cluster that means after the pin has committed and every
-service restarted (WHAT-NEXT.md Step 12). A new-variant command committed
+service restarted (TUTORIAL.md Step 12). A new-variant command committed
 earlier is decoded by every old service, which fail-stops with
 `corrupt committed frame (fail-stop)`, on every node and on every restart,
 and the dead services then cannot complete the instant the pin needs. Ship

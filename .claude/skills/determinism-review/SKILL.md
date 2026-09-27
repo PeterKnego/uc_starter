@@ -65,7 +65,7 @@ Apply every item to every hunk.
     image's own cursor, never the position `P` it was called with.
 13. **Behaviour change** — does the diff change what `apply` returns or stores,
     or what `query` returns, for an existing command? Then `FSM_VERSION` in
-    `src/identity.rs` must be bumped and WHAT-NEXT.md Step 12 (the
+    `src/identity.rs` must be bumped and TUTORIAL.md Step 12 (the
     `upgrade-fsm` skill) is required before it reaches any cluster that ran
     the old version. A new command variant also counts: no client may send
     it until every service runs the new build.
