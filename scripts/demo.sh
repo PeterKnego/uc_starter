@@ -9,14 +9,18 @@ CLI="${UC_CLIENT:-$(app_bin_dir)/$APP_NAME}"
 [ -x "$CLI" ] || die "$CLI missing — run make build"
 GW="$(gateways_csv)"
 fails=0
-expect() { # description, expected-substring, command…
+expect() { # description, expected-substring, command…; leaves the output in $last
   local d="$1" want="$2"; shift 2
-  local got rc; got="$("$CLI" --gateways "$GW" "$@" 2>&1)"; rc=$?
+  local got rc; got="$("$CLI" --gateways "$GW" "$@" 2>&1)"; rc=$?; last="$got"
   if [ $rc -eq 0 ] && [[ "$got" == *"$want"* ]]; then printf '   %-28s -> %s\n' "$d" "$got"
   else printf '   %-28s -> FAILED (exit %s): %s\n' "$d" "$rc" "$got"; fails=$((fails+1)); fi
 }
 echo "demo against $GW"
 expect "put greeting hello"      'ok previous='       put greeting hello
+# Read-your-writes: the put's token, carried to a separate process, makes the
+# read see that write on whichever replica answers (no read barrier needed).
+rt="${last##*token=}"
+expect "get greeting --at-least"  'value="hello"'      get greeting --at-least "$rt"
 expect "get greeting"            'value="hello"'      get greeting --linearizable
 expect "delete greeting"         'ok removed="hello"' delete greeting
 expect "get greeting (deleted)"  'value=none'         get greeting --linearizable

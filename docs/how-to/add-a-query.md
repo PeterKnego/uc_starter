@@ -35,7 +35,8 @@ read. It must not change state, and it must not panic.
 
 ## 3. Give the client a subcommand — `src/bin/client.rs`
 
-Model it on `get`: a `Sub` variant with a `--linearizable` flag.
+Model it on `get`: a `Sub` variant with the `--linearizable` and `--at-least`
+flags.
 
 ```rust
 /// How many keys the registry holds.
@@ -43,6 +44,9 @@ Len {
     /// Go through the cluster's read barrier (see `get`).
     #[arg(long)]
     linearizable: bool,
+    /// Read-your-writes: answer from state applied at least to this token.
+    #[arg(long, value_name = "TOKEN", conflicts_with = "linearizable")]
+    at_least: Option<ReadToken>,
 },
 ```
 
@@ -53,16 +57,20 @@ and dispatches to a query. The skeleton's `query` function builds
 `QueryResponse` variant now requires:
 
 ```rust
+let token = client.read_token();
 match answer {
-    QueryResponse::Value(v) => println!("value={}", opt(&v)),
-    QueryResponse::Len(n) => println!("len={n}"),
+    QueryResponse::Value(v) => println!("value={} token={token}", opt(&v)),
+    QueryResponse::Len(n) => println!("len={n} token={token}"),
 }
 ```
 
 `--linearizable` maps to `Consistency::Linearizable` (the read barrier: sees
-every write acknowledged before it); without it the client asks for
-`Consistency::Snapshot`, served from whichever replica answered, possibly a
-little behind. See [concepts § Commands and queries](../concepts.md#commands-and-queries).
+every write acknowledged before it); `--at-least <token>` to
+`query_at_least` (read-your-writes: any replica answers once it has applied
+up to the token a previous answer printed); without either the client asks
+for `Consistency::Snapshot`, served from whichever replica answered, possibly
+a little behind. Keep printing `token=` so the answer can seed the next
+`--at-least`. See [concepts § Commands and queries](../concepts.md#commands-and-queries).
 
 ## 4. Test it — `tests/state.rs`
 

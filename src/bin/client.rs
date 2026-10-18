@@ -23,6 +23,12 @@
 //!    edge answering "not me", e.g. a cluster with no leader) is still making
 //!    progress from `RemoteClient`'s point of view, and a one-shot CLI must
 //!    not wait for that forever.
+//! 4. **The read token crosses processes as text.** Every answer prints
+//!    `token=`, the client's read-your-writes token (16 hex digits). A later
+//!    `get --at-least <token>` — from this process or any other, through any
+//!    gateway — is answered only from state that includes that write. That
+//!    is the shape a web frontend needs: one request writes, the token rides
+//!    in the cookie, the next request reads on whichever node is nearest.
 //!
 //! Exit codes: `0` success, `1` the request failed, `2` bad arguments
 //! (`validate()` refusals included).
@@ -33,7 +39,7 @@ use std::time::{Duration, Instant};
 
 use app::{Command, Query, QueryResponse, Response};
 use clap::{Parser, Subcommand};
-use uc_remote::{Consistency, RemoteClient, RemoteConfig, RemoteError, Ticket};
+use uc_remote::{Consistency, ReadToken, RemoteClient, RemoteConfig, RemoteError, Ticket};
 
 #[derive(Parser)]
 #[command(name = env!("CARGO_BIN_NAME"), about = "Drives the app's cluster through a uc2-gateway")]
@@ -74,6 +80,12 @@ enum Sub {
         /// from whichever replica's gateway answered, and may be stale.
         #[arg(long)]
         linearizable: bool,
+        /// Read-your-writes: answer only from state applied at least up to
+        /// this token (the `token=` a previous `put`, `delete` or `get`
+        /// printed). Served by any replica at close to snapshot cost; a
+        /// replica behind the token waits or is retried, never answers stale.
+        #[arg(long, value_name = "TOKEN", conflicts_with = "linearizable")]
+        at_least: Option<ReadToken>,
     },
     /// Load: keep `--inflight` writes outstanding for `--duration-secs` and
     /// print throughput and latency. cloud-infra's `make cloud-bench` runs it.
@@ -275,7 +287,11 @@ fn run(args: &Args) -> Result<(), Fail> {
         Sub::Put { .. } | Sub::Delete { .. } => {
             submit(&client, command.as_ref().expect("built above"), deadline)
         }
-        Sub::Get { key, linearizable } => query(&client, key, *linearizable, deadline),
+        Sub::Get {
+            key,
+            linearizable,
+            at_least,
+        } => query(&client, key, *linearizable, *at_least, deadline),
         Sub::Bench {
             duration_secs,
             inflight,
@@ -301,21 +317,26 @@ fn submit(client: &RemoteClient, cmd: &Command, deadline: Instant) -> Result<(),
         .wait_timeout(remaining(deadline))
         .map_err(|e| Fail::Run(e.to_string()))?;
     let response: Response = dec(&resp.bytes)?;
+    // `token=` is the client's read token after this write: the position it
+    // applied at, plus one. Hand it to a later `get --at-least` — in this
+    // process or another — and that read is guaranteed to see this write.
     match response {
         Response::Put { previous } => {
             println!(
-                "ok previous={} position={} replayed={}",
+                "ok previous={} position={} replayed={} token={}",
                 opt(&previous),
                 resp.position,
-                resp.replayed
+                resp.replayed,
+                client.read_token()
             )
         }
         Response::Delete { removed } => {
             println!(
-                "ok removed={} position={} replayed={}",
+                "ok removed={} position={} replayed={} token={}",
                 opt(&removed),
                 resp.position,
-                resp.replayed
+                resp.replayed,
+                client.read_token()
             )
         }
     }
@@ -326,27 +347,30 @@ fn query(
     client: &RemoteClient,
     key: &str,
     linearizable: bool,
+    at_least: Option<ReadToken>,
     deadline: Instant,
 ) -> Result<(), Fail> {
-    let consistency = if linearizable {
-        Consistency::Linearizable
-    } else {
-        Consistency::Snapshot
-    };
-    let ticket = client
-        .query(
-            &app::encode(&Query::Get {
-                key: key.to_string(),
-            }),
-            consistency,
-        )
-        .map_err(|e| Fail::Run(e.to_string()))?;
+    let q = app::encode(&Query::Get {
+        key: key.to_string(),
+    });
+    // Three strengths: linearizable (the leader's read barrier), read-your-
+    // writes (any replica, once it has applied up to the token), snapshot
+    // (any replica, whatever it has). `RemoteClient` re-sends a RETRY from a
+    // replica behind the token on its own, so no loop is needed here.
+    let ticket = match at_least {
+        Some(token) => client.query_at_least(&q, token),
+        None if linearizable => client.query(&q, Consistency::Linearizable),
+        None => client.query(&q, Consistency::Snapshot),
+    }
+    .map_err(|e| Fail::Run(e.to_string()))?;
     let resp = ticket
         .wait_timeout(remaining(deadline))
         .map_err(|e| Fail::Run(e.to_string()))?;
     let answer: QueryResponse = dec(&resp.bytes)?;
     let QueryResponse::Value(v) = answer;
-    println!("value={}", opt(&v));
+    // The answer raised the client's token to the answering replica's applied
+    // position, so a chain of `--at-least` reads never goes backwards.
+    println!("value={} token={}", opt(&v), client.read_token());
     Ok(())
 }
 

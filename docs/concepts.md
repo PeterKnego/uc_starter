@@ -56,18 +56,26 @@ A **command** changes state. It goes through consensus, is stored in the log
 and is applied on every replica. A **query** only reads. It is answered from
 *one* replica's local state and never enters the log.
 
-A query comes in two strengths, chosen by the caller (`get --linearizable` in
-this project's client):
+A query comes in three strengths, chosen by the caller (`get`,
+`get --at-least <token>` and `get --linearizable` in this project's client):
 
 - **snapshot read** (the default here): answered by whichever replica you
-  reached, from its own state. Fast, and may lag the leader slightly.
+  reached, from its own state. Fast, and may lag the leader — even behind a
+  write you were just told succeeded.
+- **read-your-writes read**: carries a *token*, a log position. The replica
+  answers once it has applied at least that far, so you see your own writes
+  and never read backwards; any replica can answer, at close to snapshot
+  cost. Every answer the client gets prints `token=`; pass it to the next
+  read, in this process or another. It does not see *other* clients' later
+  writes.
 - **linearizable read**: passes the cluster's read barrier, a quorum round
-  trip, and waits for the replica to catch up, so it reflects every write
-  acknowledged before the read began.
+  trip on the leader, so it reflects every write acknowledged before the
+  read began, whoever made it.
 
-`query` itself is the same method either way; the framework does the routing.
+`query` itself is the same method for all three; the framework does the routing.
 
-Upstream: [Linearizable read path](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/read-path.md).
+Upstream: [Linearizable read path](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/read-path.md),
+[Read-your-writes reads, explained](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/notes/uc2-read-your-writes-explained.md).
 
 ## Sessions and `replayed`
 

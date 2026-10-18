@@ -137,6 +137,8 @@ The three check questions:
 3. A position is the byte offset of a command in the log. It is the same on
    every replica and it only grows. The commit, durable and append counters in
    `make status` are positions, and so is the `position=` the demo prints.
+   The `token=` next to it is a position too — the one a later
+   `get --at-least <token>` waits for, so that read sees the write.
 
 </details>
 
@@ -146,7 +148,7 @@ The three check questions:
 Nothing in the repo can show that you understood it, so you record it yourself.
 
 **Common mistakes.**
-- Treating a query as if it went through consensus. A query is answered from *one* replica's local state and never enters the log. A plain (snapshot) read can be behind. Only a `--linearizable` read goes through the cluster's read barrier.
+- Treating a query as if it went through consensus. A query is answered from *one* replica's local state and never enters the log. A plain (snapshot) read can be behind, even behind your own write. `get --at-least <token>` waits for that replica to reach the position your write printed (read-your-writes); only a `--linearizable` read goes through the cluster's read barrier and sees everyone's writes.
 - Thinking the nodes agree on *state*. They agree on the order of commands. Identical state follows only because `apply` is deterministic.
 - Putting side effects (an email, an HTTP call) in `apply`. They would run on every replica, and again on every replay. Side effects belong after commit, on the leader only.
 
@@ -307,15 +309,24 @@ a request times out inside the cluster, the gateway answers `UNKNOWN`: it may or
 may not have committed. With `resend_on_unknown` (on by default) the client sends
 it again. The service runs `Sessioned` and the gateway's envelope is on, so a
 re-sent write that already landed comes back `replayed=true` instead of applying
-twice. The client exits `0` on success, `1` when the request failed, and `2` for
-bad arguments, `validate()` refusals included. See
-[Run a gateway](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/run-a-gateway.md)
-and [the remote protocol](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/remote-protocol.md).
+twice. That protection is per `(client_id, seq)`: a process that reuses a
+*persisted* `client_id` must also resume above every `seq` it used
+(`RemoteConfig::first_seq`, from `next_seq()`, persisted *before* submitting),
+or its new writes get old cached answers. Every answer also prints `token=`,
+the client's read-your-writes token: a `get --at-least <token>` from any
+process, through any gateway, is answered only from state that includes that
+write, at close to snapshot cost — the shape a web frontend needs, where one
+request writes, the token rides in the cookie, and the next request reads on
+the nearest node. The client exits `0` on success, `1` when the request failed,
+and `2` for bad arguments, `validate()` refusals included. See
+[Run a gateway](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/run-a-gateway.md),
+[the remote protocol](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/remote-protocol.md)
+and [Read-your-writes reads, explained](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/notes/uc2-read-your-writes-explained.md).
 
 **Do it yourself.**
 1. In `src/bin/client.rs`, write one `Sub` variant per command and query. Build the `Command` and call `validate()` before connecting. Print each response on one line.
-2. Give read subcommands a `--linearizable` flag, like the skeleton's `get`.
-3. In `scripts/demo.sh`, rewrite the `expect` lines for your commands. Keep the shape: a description, a substring the output must contain, then the arguments.
+2. Give read subcommands the `--linearizable` and `--at-least <token>` flags, like the skeleton's `get`, and print `token=` on every answer.
+3. In `scripts/demo.sh`, rewrite the `expect` lines for your commands. Keep the shape: a description, a substring the output must contain, then the arguments. Keep one read-your-writes pair: a write, then a read `--at-least` the token it printed (`$last` holds the previous output).
 4. In `scripts/probe.sh`, rewrite `probe_write`, `probe_read` and `probe_expect`: one write your app accepts and the linearizable read that shows it. The Part-2 drills (Steps 10 and 12) use exactly these, and `make demo` checks them.
 5. The client's `bench` subcommand (make cloud-bench) sends `bench_command` in src/bin/client.rs; change it to your app's most common write, and delete its TODO marker.
 6. Delete the TODO marker lines in `src/bin/client.rs`, `scripts/demo.sh` and `scripts/probe.sh`.
@@ -334,6 +345,7 @@ hashes `src/`, `Cargo.toml` and `Cargo.lock`, so a later code edit makes it stal
 **Common mistakes.**
 - Forgetting `make restart-services` after a rebuild. The cluster keeps running the old service binary. If only an answer changed shape, the new client fails with "client and service built from different code?". If the new client sends a command variant the old service does not know, it is worse: the command is committed, and every old service fail-stops on it with `corrupt committed frame (fail-stop)`. Restart the services with the new build, or on this disposable cluster `make up FRESH=1`.
 - Giving the client only the leader's gateway. Leadership moves. Give it all three and let redirects do their job.
+- Expecting a plain `get` to show the `put` you just made. A snapshot read is answered by whichever replica the gateway reached, which may not have applied it yet. Pass the write's `token=` as `--at-least`, or pay for `--linearizable`.
 - Treating exit `1` like exit `2`. Retrying a bad argument never helps. Retrying a failed request (no leader yet, a timeout) might.
 
 ### Step 9 — Kill the leader
@@ -429,15 +441,25 @@ whose service is down reads *not ready* while the cluster itself is healthy.
 Readiness keys on `can_serve`, never on the leader flag. `/metrics` is
 Prometheus text. The alert rules in `.uc/packaging/prometheus/`, copied from the
 release by `make bins`, fire on conditions such as no leader, replication
-stalled, a service absent or wedged, and snapshots that never complete. See
-[Monitor a cluster](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/monitor-a-cluster.md#the-probe-endpoints).
+stalled, a service absent or wedged, and snapshots that never complete. The
+fourth path, `/cluster`, is the **cluster view**: one JSON document with the
+committed cluster state (membership, settings, each row's running version and
+upgrade state, the snapshot catalog, backup tiers), this node's holdings and
+services, and an `attention` list naming the conditions the node already
+detects. `uc2ctl cluster --json` prints the same document on the host, and
+`uc2ctl catalog` its snapshot part; both work from the newest cluster artifact
+when the node is stopped. Read it first when something is off: it is the
+whole picture in one request, for you, a script or an agent. See
+[Monitor a cluster](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/monitor-a-cluster.md#the-probe-endpoints)
+and [The cluster view](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/cluster-view.md).
 
 **Do it yourself.**
 1. `make up` if needed.
-2. `make observe`. It checks `/healthz` and `/readyz` on every node, looks for the key series, and checks that exactly one node reports leader.
+2. `make observe`. It checks `/healthz` and `/readyz` on every node, looks for the key series, checks that exactly one node reports leader, and prints each node's role and `attention` codes from `/cluster`.
 3. `scripts/cluster.sh metrics 0 | grep '^uc_service'`. These are your state machine's series: applied position, lag, attached.
-4. Stop one service (`scripts/cluster.sh stop service 1`) and fetch node 1's `/readyz` (port `BASE_PORT + 201`). Within a few seconds it turns 503. Start the service again: `scripts/cluster.sh start service 1`.
-5. Read the rule file: `.uc/packaging/prometheus/uc2-alerts.yml`.
+4. `curl -s http://127.0.0.1:$((BASE_PORT + 200))/cluster | jq .` (node 0's metrics port). Find your row under `cluster.upgrades[]` with its running version, the catalog's newest agreed set under `cluster.catalog`, and `attention` (`catalog_empty` until the first instant of Step 10; empty on a healthy cluster after it).
+5. Stop one service (`scripts/cluster.sh stop service 1`) and fetch node 1's `/readyz` (port `BASE_PORT + 201`). Within a few seconds it turns 503, and node 1's `/cluster` names the missing service under `attention`. Start the service again: `scripts/cluster.sh start service 1`.
+6. Read the rule file: `.uc/packaging/prometheus/uc2-alerts.yml`.
 
 **Ask the agent.** > "Run make observe, then tell me which three alerts should page me first for this app, and why."
 
@@ -486,7 +508,7 @@ and [Diff replay an FSM change](https://github.com/PeterKnego/ultima_cluster/blo
 `make upgrade-check` and `make upgrade-drill` have passed on this machine.
 
 **Common mistakes.**
-- Pinning before backing up. A backup taken after the pin carries the pin, so it cannot take you back. The drill backs up first. On a real cluster, also copy the backups off the nodes.
+- Pinning before backing up. A backup taken after the pin carries the pin, so it cannot take you back. The drill backs up first. On a real cluster, run a **backup tier** instead of one-off backups: a writer node copies every agreed snapshot set and the committed journal to an off-node directory continuously, and `uc2ctl tier restore` brings the whole cluster back as of any position the tier reaches — including the one just before the pin. See [Back up to a tier](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/back-up-to-a-tier.md).
 - Starting any new service before every old one is stopped. In a mixed row, a new leader can acknowledge a write that an old replica cannot apply. Stop them all, then start them all.
 - Running `make restart-services` after bumping `FSM_VERSION` but before the pin. It refuses, and `make up` warns about services running an older build, because nothing sanctions the new build yet. With `FORCE=1` the old services stop, and every new one is refused at attach by name (`row 0 ("<your FSM_NAME>") runs 1.0.0; this binary is 1.1.0 — install a 1.0.x build, or move the row to this version with uc2ctl upgrade pin`): the cluster runs one version line per row, and only a pin moves it. So nothing is applied under the new code, but the row now has no service at all. Use `make upgrade-drill`. If it already happened, check out the old code, run `FORCE=1 make restart-services`, and start again from step 3.
 - Skipping the corpus because "the change is small". Diff replay is how you learn that the change is *only* what you meant.

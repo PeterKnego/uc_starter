@@ -195,8 +195,16 @@ Then, on your development machine: `make done STEP=deploy`.
   one with `uc2ctl settings apply`. For an extra instant now, on the leader's
   host:
   `sudo uc2ctl snapshot --instance-dir /srv/uc2/<APP_NAME> --app-id <APP_ID> --admin-key /etc/uc2/admin/admin.key`.
-- **Backups.** `sudo uc2ctl backup` works on a running node; copy the result off
-  the host. It is also the only rollback from a pinned upgrade.
+- **Backups.** Run a backup tier: a `[backup]` section with `target = "<dir>"`
+  in one node's `node.toml` names an off-node directory (an NFS or object-store
+  mount); that writer node copies every agreed snapshot set and the committed
+  journal there, and `sudo uc2ctl tier`
+  restores the cluster as of any position the tier reaches, forks a copy,
+  replaces a node, or exports a diff-replay corpus. Purge can be gated on the
+  tier holding the bytes. A one-off `sudo uc2ctl backup` still works on a
+  running node — copy the result off the host. Either is the only rollback
+  from a pinned upgrade. See
+  [Back up to a tier](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/back-up-to-a-tier.md).
 - **Monitoring.** Scrape each node's metrics port. The alert rules are in
   `.uc/packaging/prometheus/uc2-alerts.yml` on your development machine
   (`make bins` fetched them).
