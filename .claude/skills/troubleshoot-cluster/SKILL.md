@@ -12,6 +12,13 @@ failed, then the named refusal in `docs/troubleshooting.md`.
 
 1. `make status`. Note which processes are down, which node leads
    (`leader=true can_serve=true`), and the commit positions.
+   Then the cluster view: `scripts/cluster.sh ctl N cluster --json` (works
+   from the newest artifact when node N is stopped) or, live,
+   `curl -s http://127.0.0.1:<BASE_PORT+200+N>/cluster`. Its `attention`
+   list names the conditions the node already detects (`catalog_empty`,
+   `set_stalled`, `set_diverged`, …); `cluster.upgrades[]` shows each row's
+   running version and any pin in flight. Quote the matching `attention`
+   entry before reading logs.
 2. `scripts/cluster.sh root` prints ROOT. Read the tail of each failed
    process's log: `tail -n 40 "$ROOT/logs/<proc>N.log"`, where `<proc>` is
    `node`, `service` or `gateway` and N is 0, 1 or 2. For a service fail-stop,

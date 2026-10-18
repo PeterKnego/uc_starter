@@ -75,7 +75,9 @@ every host; install the new binaries everywhere; do the one-time steps the
 release names (such as clearing `snapshots/<row>/` on every node, where the
 release says that is safe for your setup); start every node, then every
 service, then every gateway. **Stop every node before you start any node.**
-Take an off-node backup first (`uc2ctl backup`), so there is a way back.
+Make sure there is a way back first: a backup tier that has reached the
+current position (`uc2ctl tier show`), or a one-off `uc2ctl backup` copied off
+every node.
 
 Rebuild the deploy bundle with `make package` so the bundle, the binaries and
 your service all come from the same release.

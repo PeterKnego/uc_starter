@@ -69,6 +69,36 @@ fn bench_refuses_zero_and_overlong_duration_before_connecting() {
 }
 
 #[test]
+fn get_refuses_a_non_hex_read_token_before_connecting() {
+    let out = Command::new(bin(""))
+        .args(["--gateways", "127.0.0.1:1", "get", "k", "--at-least", "zz"])
+        .output()
+        .unwrap();
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert_eq!(out.status.code(), Some(2), "{err}");
+    assert!(err.contains("invalid value 'zz'"), "{err}");
+}
+
+#[test]
+fn get_refuses_at_least_together_with_linearizable() {
+    let out = Command::new(bin(""))
+        .args([
+            "--gateways",
+            "127.0.0.1:1",
+            "get",
+            "k",
+            "--at-least",
+            "00000000000a3f10",
+            "--linearizable",
+        ])
+        .output()
+        .unwrap();
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert_eq!(out.status.code(), Some(2), "{err}");
+    assert!(err.contains("cannot be used with"), "{err}");
+}
+
+#[test]
 fn bad_gateway_address_is_exit_2() {
     let out = Command::new(bin(""))
         .args(["--gateways", "nocolon", "get", "k"])

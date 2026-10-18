@@ -20,5 +20,7 @@
 : "${GW:=$(gateways_csv)}"
 
 probe_write() { "$1" --gateways "$GW" put "probe-$2" "v-$2" >/dev/null; }
-probe_read() { "$1" --gateways "$GW" get "probe-$2" --linearizable; }
+# The drills compare probe_read's line to probe_expect's exactly, so the
+# read-your-writes `token=` the client appends (it differs every run) is cut.
+probe_read() { local out; out="$("$1" --gateways "$GW" get "probe-$2" --linearizable)" && printf '%s\n' "${out% token=*}"; }
 probe_expect() { printf 'value="v-%s"\n' "$1"; }

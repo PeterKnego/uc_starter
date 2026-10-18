@@ -15,7 +15,19 @@ for n in 0 1 2; do
   for s in "${SERIES[@]}"; do grep -qE "^$s(\{| )" <<<"$body" || die "node $n exports no $s"; done
   l="$(grep -E '^uc2_is_leader(\{[^}]*\})? ' <<<"$body" | awk '{print $2}' | head -1)"
   [ "${l%%.*}" = 1 ] && leaders=$((leaders+1))
-  echo "node $n: healthz ok, readyz ok, ${#SERIES[@]} key series present, is_leader=${l:-?}"
+  # The cluster view (2.14.0+): one JSON document — the committed cluster
+  # state, this node's holdings and services, and an `attention` list naming
+  # what the node already detects. `uc2ctl cluster --json` prints the same
+  # document, from the newest cluster artifact when the node is stopped.
+  view="$(curl -fs "$m/cluster")" || die "node $n GET /cluster unreachable"
+  grep -qE '"schema": ?"uc2\.cluster-view/1"' <<<"$view" || die "node $n /cluster is not uc2.cluster-view/1"
+  if command -v jq >/dev/null 2>&1; then
+    role="$(jq -r '.role' <<<"$view")"
+    att="$(jq -r '[.attention[].code] | join(",")' <<<"$view")"
+  else
+    role="?"; att="(jq missing; read the attention list with uc2ctl cluster)"
+  fi
+  echo "node $n: healthz ok, readyz ok, ${#SERIES[@]} key series present, is_leader=${l:-?}, cluster view role=$role attention=${att:-none}"
 done
 [ $leaders = 1 ] || die "expected exactly one uc2_is_leader=1, saw $leaders"
 echo "alert rules to load into Prometheus: .uc/packaging/prometheus/uc2-alerts.yml"
