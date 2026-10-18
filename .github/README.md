@@ -1,14 +1,14 @@
 # Start your own project on ultima_cluster
 
 This is a starter project to help you write high-performance clustered
-applications on [ultima_cluster (UC)](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/README.md).
+applications on [ultima_cluster (UC)](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/README.md).
 
-[State Machine Replication (SMR)](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/notes/state-machine-replication-explained.md)
+[State Machine Replication (SMR)](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/notes/state-machine-replication-explained.md)
 is an architectural pattern used by the largest distributed systems in the
 world: financial exchanges, distributed databases, etc. It's a complex
 technology that requires a special approach to writing applications to achieve
 high performance, correctness and resiliency. This is where
-[ultima_cluster](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/README.md)
+[ultima_cluster](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/README.md)
 steps in: it makes this process much easier for developers and operators.
 
 To make it even easier: this starter project comes preconfigured with all documentation and step-by-step AI tutor. 
@@ -20,7 +20,7 @@ either Linux (x86-64 or aarch64) with [rustup](https://rustup.rs) or Docker for
 the devcontainer (the path on macOS and Windows: UC nodes run on Linux only).
 
 ```bash
-cargo generate --git https://github.com/PeterKnego/uc_starter   # add --tag v2.13.0 to pin a UC release
+cargo generate --git https://github.com/PeterKnego/uc_starter   # add --tag v2.14.0 to pin a UC release
 cd <your-project>
 make bins up demo
 make next

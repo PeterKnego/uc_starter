@@ -13,8 +13,8 @@ every artifact holds the session table. On your local cluster, start over with
 Snapshots are not optional, so this page has no way to remove them. A cluster
 without them cannot purge its journal, and a restarted service replays the
 whole log: at a tenth of UC's measured ingest rate that is about 1.5 TB of
-journal per node per day, and about 7.5 days of replay per month of history. UC is making `start_with_snapshots()` the only
-way to start a service
+journal per node per day, and about 7.5 days of replay per month of history. `ServiceBuilder::start()` does not compile for a state machine without
+`SnapshotStateMachine`
 ([ultima_cluster#67](https://github.com/PeterKnego/ultima_cluster/issues/67)).
 
 ## Sessions
@@ -52,6 +52,6 @@ and handle `UNKNOWN` in your client.
 Then `make check`, `make up FRESH=1`, `make demo`. The `replayed=` field the
 client prints is now always `false`.
 
-Upstream: [the state-machine contract](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/state-machine-contract.md),
-[When to use `envelope = false`](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/run-a-gateway.md#when-to-use-envelope--false)
-and [the remote protocol](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/remote-protocol.md).
+Upstream: [the state-machine contract](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/state-machine-contract.md),
+[When to use `envelope = false`](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/run-a-gateway.md#when-to-use-envelope--false)
+and [the remote protocol](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/remote-protocol.md).

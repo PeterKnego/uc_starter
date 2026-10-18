@@ -25,12 +25,12 @@ cluster-tests = []
 # Exact pins: a UC upgrade is a whole-cluster stop and start, crates included.
 # Move them only with `make uc-upgrade VERSION=x`.
 [dependencies]
-uc_service = "=2.13.0"
-uc_remote = "=2.13.0"
-uc_protocol = "=2.13.0"
+uc_service = "=2.14.0"
+uc_remote = "=2.14.0"
+uc_protocol = "=2.14.0"
 # default-features = false: the service embeds the replay DRIVER only and must
 # not link the consensus crate.
-uc_diffreplay = { version = "=2.13.0", default-features = false }
+uc_diffreplay = { version = "=2.14.0", default-features = false }
 serde = { version = "1", features = ["derive"] }
 bincode = { version = "2", features = ["serde"] }
 clap = { version = "4", features = ["derive"] }

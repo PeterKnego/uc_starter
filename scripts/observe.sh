@@ -3,7 +3,7 @@
 # (TUTORIAL.md, Step 11).
 # shellcheck source=scripts/lib.sh
 . "$(dirname "$0")/lib.sh"
-# Names checked against a live 2.13.0 /metrics scrape. uc_service_* is your
+# Names checked against a live 2.14.0 /metrics scrape. uc_service_* is your
 # state machine's own family (applied, lag, attached, …).
 SERIES=(uc2_agent_alive uc2_is_leader uc2_commit_bytes uc2_fsm_lag_bytes uc2_service_version uc_service_attached uc_service_lag_bytes)
 leaders=0

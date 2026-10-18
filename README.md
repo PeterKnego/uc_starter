@@ -2,7 +2,7 @@
 
 Choose a license for your project before you publish it — this template presumes none.
 
-An application on [ultima_cluster](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/README.md)
+An application on [ultima_cluster](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/README.md)
 (UC), generated from `uc_starter`. UC is a state machine replication server:
 three or more nodes agree on the order of the commands in one log, and every
 node applies that log to its own copy of your state machine. Because your
@@ -231,5 +231,5 @@ pins the crates a teammate's build resolves.
   [use the shared-memory client](docs/how-to/use-the-shmem-client.md)
 - [`docs/ai-engineering.md`](docs/ai-engineering.md) — working with an agent
 - [`docs/troubleshooting.md`](docs/troubleshooting.md) — named failures and their fixes
-- Upstream: [the ultima_cluster how-to guides](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/README.md)
-  and [reference](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/README.md)
+- Upstream: [the ultima_cluster how-to guides](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/README.md)
+  and [reference](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/README.md)

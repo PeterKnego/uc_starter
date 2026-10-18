@@ -96,5 +96,5 @@ on a cluster you care about, roll the new service out to every node before
 you ship the client. If you change what an *existing* query returns, treat it
 as a behaviour change: bump `FSM_VERSION` and follow `TUTORIAL.md` Step 12.
 
-Upstream: [the state-machine contract](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/state-machine-contract.md)
-and [Linearizable read path](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/read-path.md).
+Upstream: [the state-machine contract](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/state-machine-contract.md)
+and [Linearizable read path](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/read-path.md).

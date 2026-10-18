@@ -5,7 +5,7 @@ in `$(scripts/cluster.sh root)/logs/`, one file per process (`node0.log`,
 `service0.log`, `gateway0.log`, …). `make status` shows which processes are
 running and what each node reports.
 
-Upstream, for anything not here: [Diagnose a node](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/diagnose-a-node.md).
+Upstream, for anything not here: [Diagnose a node](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/diagnose-a-node.md).
 
 ## `NodeBooting`
 
@@ -130,7 +130,7 @@ artifact without one is refused by name rather than guessed at.
 
 **Fix.** On the local cluster: `make down`, then `make up FRESH=1`. On a
 deployed cluster, follow the 2.13.0 section of UC's
-[How to upgrade a cluster](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/upgrade-a-cluster.md):
+[How to upgrade a cluster](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/upgrade-a-cluster.md):
 with every node stopped, clear `snapshots/<row>/` once on every node, start
 the cluster, and take a fresh instant (`uc2ctl snapshot`) before any
 `uc2ctl upgrade pin`. That wipe is safe only if the journal still reaches
