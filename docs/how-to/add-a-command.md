@@ -134,5 +134,5 @@ again on every restart. It also blocks the pinned upgrade itself: dead old
 services cannot complete the origin instant the pin needs. Ship the service
 first, the client last.
 
-Upstream: [the state-machine contract](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/state-machine-contract.md)
-and [the change taxonomy](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/application-sdlc.md#the-change-taxonomy).
+Upstream: [the state-machine contract](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/state-machine-contract.md)
+and [the change taxonomy](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/application-sdlc.md#the-change-taxonomy).

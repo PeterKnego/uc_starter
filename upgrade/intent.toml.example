@@ -1,6 +1,6 @@
 # What your change is SUPPOSED to change. uc2-diffreplay fails the run on any
 # difference not declared here, and on any declaration it did not observe.
-# Reference: https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/diff-replay.md#3-declare-what-you-intend
+# Reference: https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/diff-replay.md#3-declare-what-you-intend
 tag_offset = 16   # skip the Sessioned envelope (client_id ‖ seq)
 
 [tags]            # first byte of the bincode encoding = the enum variant index

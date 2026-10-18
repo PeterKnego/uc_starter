@@ -129,7 +129,7 @@ Changing only the in-memory representation (for example `BTreeMap` to
 behaviour change and needs no `FSM_VERSION` bump. `make upgrade-check` with
 nothing declared in `upgrade/intent.toml` is how you show that.
 
-Upstream: [the state-machine contract § Snapshots](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/state-machine-contract.md#snapshots-the-instant-the-envelope-and-the-exclusive-frontier),
-[the kv example's design note](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/examples/kv/docs/DESIGN.md),
-[Diff replay an FSM change](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/diff-replay.md)
-and [Upgrade an application](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/upgrade-an-application.md).
+Upstream: [the state-machine contract § Snapshots](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/state-machine-contract.md#snapshots-required-the-instant-the-envelope-and-the-exclusive-frontier),
+[the kv example's design note](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/examples/kv/docs/DESIGN.md),
+[Diff replay an FSM change](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/diff-replay.md)
+and [Upgrade an application](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/upgrade-an-application.md).

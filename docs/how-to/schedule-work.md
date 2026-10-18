@@ -88,6 +88,6 @@ format, which needs the same care as
   the replicated schedule table (`uc2ctl schedule apply`); those arrive with
   `ev.table` set. Keep the two id ranges apart.
 
-Upstream: [Schedule work inside a state machine](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/schedule-work-in-a-service.md),
-[Run work on a schedule](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/run-work-on-a-schedule.md)
-and [Log time and timers, explained](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/notes/uc2-log-time-and-timers-explained.md).
+Upstream: [Schedule work inside a state machine](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/schedule-work-in-a-service.md),
+[Run work on a schedule](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/run-work-on-a-schedule.md)
+and [Log time and timers, explained](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/notes/uc2-log-time-and-timers-explained.md).

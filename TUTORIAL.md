@@ -33,8 +33,8 @@ release's `SHA256SUMS` before installing anything. If `cosign` is installed, it
 also checks the signature, pinned to the GitHub workflow that built the release.
 A checksum only proves the download is complete. The signature proves where the
 file came from. See
-[the quickstart, § 1](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/QUICKSTART.md#1-download-it-and-verify-it)
-and [Limits](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/limits.md).
+[the quickstart, § 1](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/QUICKSTART.md#1-download-it-and-verify-it)
+and [Limits](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/limits.md).
 
 **Do it yourself.**
 1. On macOS or Windows, open this project in its devcontainer and run everything below inside it.
@@ -70,8 +70,8 @@ service can attach only after its node has *joined* the cluster: it
 knows a leader, has learned the commit position, and has applied the cluster's
 own records up to it. Until then the attach is refused `NodeBooting` and waits
 up to 10 s. See
-[the quickstart, § 3](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/QUICKSTART.md#3-what-just-happened)
-and [the state-machine contract](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/state-machine-contract.md)
+[the quickstart, § 3](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/QUICKSTART.md#3-what-just-happened)
+and [the state-machine contract](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/state-machine-contract.md)
 (§ Attaching).
 
 **Do it yourself.**
@@ -112,7 +112,7 @@ from a cache with `replayed=true` and is not applied twice. A **snapshot** is
 your state written out at one log position. It lets a node that fell behind
 install the state instead of replaying the whole log, and it lets the log be
 trimmed. See
-[State machine replication, explained](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/notes/state-machine-replication-explained.md).
+[State machine replication, explained](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/notes/state-machine-replication-explained.md).
 
 **Do it yourself.**
 1. Read the linked explainer. It takes about ten minutes.
@@ -166,8 +166,8 @@ to be bounded anyway. An unbounded "list everything" answer grows with your stat
 until it hurts. Last, list the determinism hazards you considered: clocks, ids,
 iteration order, floats, integer overflow and I/O. A mistake is cheapest to fix
 at this step. See
-[the state-machine contract § Payload ceiling](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/state-machine-contract.md#payload-ceiling)
-and [Limits](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/limits.md).
+[the state-machine contract § Payload ceiling](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/state-machine-contract.md#payload-ceiling)
+and [Limits](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/limits.md).
 
 **Do it yourself.**
 1. Open `docs/app-design.md`. Each section is filled in for the skeleton registry, as a worked example.
@@ -200,8 +200,8 @@ fields. Once a real cluster has run a version, even an appended variant or field
 is a change that needs Step 12's upgrade. `Command::validate()` runs in the
 client *before* anything is sent, so an oversize command is refused at the door
 with a clear message. See
-[the state-machine contract](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/state-machine-contract.md)
-and [the change taxonomy](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/application-sdlc.md#the-change-taxonomy).
+[the state-machine contract](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/state-machine-contract.md)
+and [the change taxonomy](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/application-sdlc.md#the-change-taxonomy).
 
 **Do it yourself.**
 1. In `src/commands.rs`, rewrite `Command`, `Response`, `Query` and `QueryResponse` from your design note.
@@ -235,7 +235,7 @@ replica rebuilt from a snapshot mints the same ids as one that replayed the
 whole log. `last_applied()` tells the framework where to resume after a restart.
 Set it to `ctx.position` on every path through `apply`; the skeleton does this
 after the `match`. See
-[FSM identity and deterministic IDs, explained](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/notes/uc2-fsm-identity-and-deterministic-ids-explained.md).
+[FSM identity and deterministic IDs, explained](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/notes/uc2-fsm-identity-and-deterministic-ids-explained.md).
 
 **Do it yourself.**
 1. In `src/state.rs`, replace `State` with your data. Use `BTreeMap`/`BTreeSet` and integers.
@@ -271,7 +271,7 @@ a cross-version property, and Step 12's diff replay checks it. Nor can it catch
 a hazard that only appears across two processes, such as hash order seeded per
 process; `make lint`'s bans cover that. UC's own verification record says it
 plainly: your state machine's determinism is your responsibility. See
-[Verification, § 11](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/VERIFICATION.md#11-what-is-not-verified).
+[Verification, § 11](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/VERIFICATION.md#11-what-is-not-verified).
 
 **Do it yourself.**
 1. In `tests/determinism.rs`, give `arb_command` one strategy per command, with small key spaces so commands collide.
@@ -309,8 +309,8 @@ it again. The service runs `Sessioned` and the gateway's envelope is on, so a
 re-sent write that already landed comes back `replayed=true` instead of applying
 twice. The client exits `0` on success, `1` when the request failed, and `2` for
 bad arguments, `validate()` refusals included. See
-[Run a gateway](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/run-a-gateway.md)
-and [the remote protocol](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/remote-protocol.md).
+[Run a gateway](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/run-a-gateway.md)
+and [the remote protocol](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/remote-protocol.md).
 
 **Do it yourself.**
 1. In `src/bin/client.rs`, write one `Sub` variant per command and query. Build the `Command` and call `validate()` before connecting. Print each response on one line.
@@ -351,7 +351,7 @@ The new leader first appends a "new term" marker, and serves nothing until that
 marker commits. The client's next request finds the old leader's gateway gone
 and moves to another gateway. A write that was in flight is sent again, and the
 session answers it `replayed` or applies it once. See
-[Architecture, § Control plane](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/ARCHITECTURE.md#control-plane).
+[Architecture, § Control plane](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/ARCHITECTURE.md#control-plane).
 
 **Do it yourself.**
 1. `make up` if the cluster is not running, then `make status` to see who leads.
@@ -387,21 +387,25 @@ image covers the commands strictly *below* P. That is why `install_snapshot`
 returns P but restores the image's own `last_applied` cursor. Claiming P would
 skip the next command. A node holds the *complete set* at P once every state
 machine and the cluster's own state have written their files at P, and only then
-may the journal below P be purged. **Purge is off by default.** This template
+can the cluster agree on it: every node reports a hash for each state
+machine's file at P, and the journal below P may be purged once the reports
+match. **Purge is off by default.** This template
 turns it on for the local cluster, in the `[purge]` section of the generated
-`node.toml`. A node or service that has fallen below the purged part installs
-the snapshot, then replays the log above it. While the journal still reaches
-back far enough, a restarted service simply replays the journal. See
-[The cluster FSM, explained § Instants](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/notes/uc2-cluster-fsm-explained.md#instants-one-position-one-set)
-and [Keep the journal from growing without bound](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/bound-journal-growth.md).
+`node.toml`. A restarted service starts from the newest agreed set on its node
+and replays only the log above it. A node or service that has fallen below
+the purged part installs the snapshot the same way. With no agreed set yet, a
+restarted service replays the journal. See
+[The cluster FSM, explained § Instants](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/notes/uc2-cluster-fsm-explained.md#instants-one-position-one-set),
+[The snapshot catalog, explained](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/notes/uc2-snapshot-catalog-explained.md)
+and [Keep the journal from growing without bound](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/bound-journal-growth.md).
 
 **Do it yourself.**
 1. `make up` if needed.
-2. `make snapshot-drill`. It writes a value through your `scripts/probe.sh`, commands an instant (`uc2ctl snapshot`), waits until all three nodes hold the complete set at P, SIGKILLs one service, and restarts it. It waits for the service to re-attach with a new `incarnation=` and catch up (`lag=0`), reads the value back linearizably, and tells you whether the service installed the snapshot or replayed the journal.
+2. `make snapshot-drill`. It writes a value through your `scripts/probe.sh`, commands an instant (`uc2ctl snapshot`), waits until all three nodes hold the complete set at P, SIGKILLs one service, and restarts it. It waits for the service to re-attach with a new `incarnation=` and catch up (`lag=0`), reads the value back linearizably, and tells you which way it came back: from the agreed set on its node, by installing the snapshot, or by replaying the journal.
 3. `scripts/cluster.sh snapshot-show 0` shows each state machine's newest artifact and the complete `set=`.
 4. Optional, and it wipes the local cluster: for a cadence instead of on-demand instants, `UC_SNAPSHOT_INTERVAL=<bytes> make up FRESH=1`.
 
-**Ask the agent.** > "Run the snapshot drill. If the restarted service replayed the journal, explain why it did not need the snapshot, and what I would have to do for it to install the snapshot instead."
+**Ask the agent.** > "Run the snapshot drill. Explain which way the restarted service came back, and what would have made it come back another way."
 
 **Done when.** `make snapshot-drill` has passed on this machine.
 
@@ -426,7 +430,7 @@ Readiness keys on `can_serve`, never on the leader flag. `/metrics` is
 Prometheus text. The alert rules in `.uc/packaging/prometheus/`, copied from the
 release by `make bins`, fire on conditions such as no leader, replication
 stalled, a service absent or wedged, and snapshots that never complete. See
-[Monitor a cluster](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/monitor-a-cluster.md#the-probe-endpoints).
+[Monitor a cluster](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/monitor-a-cluster.md#the-probe-endpoints).
 
 **Do it yourself.**
 1. `make up` if needed.
@@ -454,7 +458,9 @@ Your log is replayed for as long as the cluster lives, so a behaviour change
 cannot simply be swapped in. First, before you touch the code, capture a
 *corpus* (one snapshot plus a span of real log) with the old build. Second, make
 the change and bump `FSM_VERSION` in `src/identity.rs`: any change to what
-`apply` does is a new version. Third, prove the change. Declare in
+`apply` does is a new minor or major version. A patch bump (`1.0.1`) stays on
+the running line and needs no pin, so it is only for a change that alters no
+replicated behaviour. Third, prove the change. Declare in
 `upgrade/intent.toml` which commands you changed and which outputs should differ.
 `uc2-diffreplay` replays the corpus through both builds and fails on any
 difference you did not declare, and on any declared one it did not see. Last,
@@ -463,8 +469,8 @@ node. Pin the row: from then on every node refuses the old binary by name, and
 the new one installs the snapshot at P before it replays anything. Stop *every*
 old service before starting any new one. A rolling swap is unsafe: a leader on
 the new version can acknowledge a command an old replica cannot apply. See
-[Upgrade an application](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/upgrade-an-application.md)
-and [Diff replay an FSM change](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/diff-replay.md).
+[Upgrade an application](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/upgrade-an-application.md)
+and [Diff replay an FSM change](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/diff-replay.md).
 
 **Do it yourself.**
 1. `make up`, then `make diffreplay`. It installs `uc2-diffreplay` into `.uc/cargo`.
@@ -482,7 +488,7 @@ and [Diff replay an FSM change](https://github.com/PeterKnego/ultima_cluster/blo
 **Common mistakes.**
 - Pinning before backing up. A backup taken after the pin carries the pin, so it cannot take you back. The drill backs up first. On a real cluster, also copy the backups off the nodes.
 - Starting any new service before every old one is stopped. In a mixed row, a new leader can acknowledge a write that an old replica cannot apply. Stop them all, then start them all.
-- Running `make restart-services` after bumping `FSM_VERSION` but before the pin. It refuses, and `make up` warns about services running an older build, because nothing sanctions the new build yet. If the journal below the snapshot has been purged, the new build is refused by name, because the snapshot was built by the old version. If it has not, the new build quietly rebuilds from the whole log under the new code, which is exactly what the pin exists to prevent. Either way the drill no longer finds an old version to upgrade from. Use `make upgrade-drill`. If it already happened (with `FORCE=1`), check out the old code, run `FORCE=1 make restart-services`, and start again from step 3.
+- Running `make restart-services` after bumping `FSM_VERSION` but before the pin. It refuses, and `make up` warns about services running an older build, because nothing sanctions the new build yet. With `FORCE=1` the old services stop, and every new one is refused at attach by name (`row 0 ("<your FSM_NAME>") runs 1.0.0; this binary is 1.1.0 — install a 1.0.x build, or move the row to this version with uc2ctl upgrade pin`): the cluster runs one version line per row, and only a pin moves it. So nothing is applied under the new code, but the row now has no service at all. Use `make upgrade-drill`. If it already happened, check out the old code, run `FORCE=1 make restart-services`, and start again from step 3.
 - Skipping the corpus because "the change is small". Diff replay is how you learn that the change is *only* what you meant.
 
 ### Step 13 — Deploy to three machines
@@ -502,8 +508,8 @@ encode the start order and bind each gateway and service to its node
 (`BindsTo=`), so they stop when the node stops. `[[members]]` must be identical
 on every host, and each node's `bind` must be exactly its own address in that
 list. See
-[Run a cluster on real hosts](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/run-a-cluster.md)
-and [Encrypt traffic between nodes](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/encrypt-node-traffic.md).
+[Run a cluster on real hosts](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/run-a-cluster.md)
+and [Encrypt traffic between nodes](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/encrypt-node-traffic.md).
 
 **Do it yourself.**
 1. `make package HOSTS=10.0.0.1,10.0.0.2,10.0.0.3`, with your three addresses. It writes `dist/<your-app>-<version>-<arch>.tar.gz`, where `<version>` is the one in `Cargo.toml`. The bundle holds the binaries, the systemd units, `DEPLOY.md`, and a `node.toml` and `gateway.toml` per host under `hosts/<address>/`. Each node binds, and serves metrics, on its own address; each gateway listens on it.
@@ -537,8 +543,8 @@ clients reach gateways on public ones (the gateway `[[members]]` map is what
 can reach), and stopping the leader's node forces a real election across hosts.
 `cloud-infra/` does Step 13's work for you — keys, allowlist, admin key, the
 start order — so what you watch is the behaviour, not the plumbing. See
-[Run a gateway](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/run-a-gateway.md)
-and [Run a cluster on real hosts](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/run-a-cluster.md).
+[Run a gateway](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/run-a-gateway.md)
+and [Run a cluster on real hosts](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/run-a-cluster.md).
 
 **Do it yourself.**
 1. Pick a cloud and put its credentials in `cloud-infra/.env` (`cp cloud-infra/.env.example cloud-infra/.env`). `make -C cloud-infra cloud-env-show` checks them without printing them.

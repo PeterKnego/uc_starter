@@ -48,11 +48,16 @@ done
 [ $ok = 1 ] || die "service $victim did not re-attach and catch up within 30s: $(row_line "$victim")"
 got="$(probe_read "$CLI" "$tok")"; want="$(probe_expect "$tok")"
 [ "$got" = "$want" ] || die "read back '$got', want '$want' (scripts/probe.sh)"
-# The SDK logs "installed snap-<P>" only when it had to install the snapshot
-# (the journal no longer reaches back far enough); otherwise it replayed the
-# journal, silently.
+# Three ways back, each with its own SDK line: "started from snap-<P> (start
+# set …)" when the service started from the newest snapshot set its node
+# holds that the cluster agrees on (the usual case); "installed snap-<P>"
+# when the journal no longer reaches back far enough; neither when there was
+# no such set and it replayed the journal, silently.
 since="$(tail -n +"$((before + 1))" "$LOG")"
-if inst="$(grep -m1 'installed snap-' <<<"$since")"; then
+if inst="$(grep -m1 'started from snap-' <<<"$since")"; then
+  echo "4. service $victim started from the agreed snapshot set on its node, replayed only the log above it, and the value reads back"
+  echo "   log: $inst"
+elif inst="$(grep -m1 'installed snap-' <<<"$since")"; then
   echo "4. service $victim installed the snapshot, replayed the tail, and the value reads back"
   echo "   log: $inst"
 else

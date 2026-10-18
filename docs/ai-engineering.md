@@ -118,7 +118,7 @@ rather than restating them. If a rule matters to every agent, not just Claude
 Code, put it in `AGENTS.md` too.
 
 For a larger example, UC's own
-[`diff-replay-judge` skill](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/.claude/skills/diff-replay-judge/SKILL.md)
+[`diff-replay-judge` skill](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/.claude/skills/diff-replay-judge/SKILL.md)
 is what this project's `upgrade-fsm` skill is adapted from; the harness it
 judges is described in
-[Diff replay an FSM change](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/diff-replay.md).
+[Diff replay an FSM change](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/diff-replay.md).

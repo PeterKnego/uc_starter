@@ -127,8 +127,8 @@ EOT
     printf '[[members]]\nid = %s\naddr = "%s:%s"\n\n' "$i" "${hosts[$i]}" "$(NODE_PORT "$i")"
   done
   cat <<EOT
-# The state machine implements SnapshotStateMachine and the service starts
-# with start_with_snapshots(); this is the other half of bounding the log.
+# The state machine implements SnapshotStateMachine, which the service's
+# start() requires; this is the other half of bounding the log.
 [purge]
 below_snapshot_slack_bytes = 1048576
 

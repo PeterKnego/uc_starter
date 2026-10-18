@@ -17,7 +17,7 @@ idempotency key and a stable id for "the command that did this". The
 `commit=`, `durable=` and `position=` numbers that `make status` and the client
 print are positions.
 
-Upstream: [State machine replication, explained](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/notes/state-machine-replication-explained.md).
+Upstream: [State machine replication, explained](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/notes/state-machine-replication-explained.md).
 
 ## Deterministic apply
 
@@ -47,8 +47,8 @@ state-machine files for clocks, RNGs, hash collections, floats, I/O and
 environment reads. Neither can see overflow, panics or a reordered enum; the
 `determinism-review` checklist in the agent kit covers those.
 
-Upstream: [the state-machine contract](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/state-machine-contract.md)
-and [FSM identity and deterministic ids, explained](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/notes/uc2-fsm-identity-and-deterministic-ids-explained.md).
+Upstream: [the state-machine contract](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/state-machine-contract.md)
+and [FSM identity and deterministic ids, explained](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/notes/uc2-fsm-identity-and-deterministic-ids-explained.md).
 
 ## Commands and queries
 
@@ -67,7 +67,7 @@ this project's client):
 
 `query` itself is the same method either way; the framework does the routing.
 
-Upstream: [Linearizable read path](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/read-path.md).
+Upstream: [Linearizable read path](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/read-path.md).
 
 ## Sessions and `replayed`
 
@@ -84,8 +84,8 @@ prints `replayed=` on every write.
 The session table is replicated state, so its settings (`SessionConfig`)
 must be identical on every replica.
 
-Upstream: [the state-machine contract](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/state-machine-contract.md)
-(§ `Sessioned<S>` wraps either tier) and [the remote protocol](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/remote-protocol.md).
+Upstream: [the state-machine contract](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/state-machine-contract.md)
+(§ `Sessioned<S>` wraps either tier) and [the remote protocol](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/remote-protocol.md).
 
 ## Snapshots
 
@@ -107,8 +107,8 @@ journal below it be purged.
 - `freeze()` runs on the apply thread and stalls commit while it runs. Keep it
   cheap; `docs/how-to/change-the-state-shape.md` shows how.
 
-Upstream: [the state-machine contract § Snapshots](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/state-machine-contract.md#snapshots-the-instant-the-envelope-and-the-exclusive-frontier)
-and [The cluster FSM, explained § Instants](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/notes/uc2-cluster-fsm-explained.md#instants-one-position-one-set).
+Upstream: [the state-machine contract § Snapshots](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/state-machine-contract.md#snapshots-required-the-instant-the-envelope-and-the-exclusive-frontier)
+and [The cluster FSM, explained § Instants](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/notes/uc2-cluster-fsm-explained.md#instants-one-position-one-set).
 
 ## The payload ceiling
 
@@ -120,8 +120,8 @@ the baseline. There is no chunking: a command that does not fit is refused.
 `Command::validate()` checks your limits in the client, before anything is
 sent. Responses are not limited to one datagram, but keep them bounded.
 
-Upstream: [the state-machine contract § Payload ceiling](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/state-machine-contract.md#payload-ceiling)
-and [Limits](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/limits.md#hard-limits).
+Upstream: [the state-machine contract § Payload ceiling](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/state-machine-contract.md#payload-ceiling)
+and [Limits](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/limits.md#hard-limits).
 
 ## Identity: `NAME` and `VERSION`
 
@@ -131,8 +131,11 @@ Your state machine's identity is in code, in `src/identity.rs`:
   name under `[services] names`, and the service attaches by it. Change it
   after a cluster has run and the node refuses the service by name.
 - **`FSM_VERSION`** (`StateMachine::VERSION`). The version of what `apply`
-  *does*. Every snapshot artifact is stamped with the version that built it,
-  and an ordinary install refuses an artifact built by a different version.
+  *does*. Its major.minor is the version *line*; a patch build is on the same
+  line and must not change behaviour. The cluster records which line each row
+  runs and refuses, by name, a service on any other line. Every snapshot
+  artifact is stamped with the version that built it, and an ordinary install
+  refuses an artifact built on a different line.
 
 Why a behaviour change needs an upgrade: the log is replayed for as long as
 the cluster lives. A new `apply` replaying old commands would compute a
@@ -143,5 +146,5 @@ upgrade**: every node installs the snapshot at one origin instant and replays
 only what comes after, and the old binary is refused by name from then on. A
 pin is a one-way door. `TUTORIAL.md` Step 12 walks through it.
 
-Upstream: [Upgrade an application](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/upgrade-an-application.md)
-and [the change taxonomy](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/application-sdlc.md#the-change-taxonomy).
+Upstream: [Upgrade an application](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/upgrade-an-application.md)
+and [the change taxonomy](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/application-sdlc.md#the-change-taxonomy).

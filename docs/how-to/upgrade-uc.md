@@ -80,7 +80,7 @@ Take an off-node backup first (`uc2ctl backup`), so there is a way back.
 Rebuild the deploy bundle with `make package` so the bundle, the binaries and
 your service all come from the same release.
 
-Upstream: [How to upgrade a cluster](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/upgrade-a-cluster.md),
-[Releases](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/RELEASES.md),
-[the semver policy](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/semver-policy.md)
-and [Back up a cluster](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/back-up-a-cluster.md).
+Upstream: [How to upgrade a cluster](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/upgrade-a-cluster.md),
+[Releases](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/RELEASES.md),
+[the semver policy](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/semver-policy.md)
+and [Back up a cluster](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/back-up-a-cluster.md).

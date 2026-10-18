@@ -207,10 +207,10 @@ Then, on your development machine: `make done STEP=deploy`.
   (`TUTORIAL.md` Step 12, and UC's *Upgrade an application*). A new UC
   release is a whole-cluster stop and start: see [Upgrade ultima_cluster](upgrade-uc.md).
 
-Upstream: [Run a cluster on real hosts](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/run-a-cluster.md),
-[Encrypt traffic between nodes](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/encrypt-node-traffic.md),
-[Monitor a cluster](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/monitor-a-cluster.md),
-[Run a gateway](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/run-a-gateway.md),
-[Back up a cluster](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/back-up-a-cluster.md),
-[Change cluster membership](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/change-cluster-membership.md)
-and [Configuration](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/reference/configuration.md).
+Upstream: [Run a cluster on real hosts](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/run-a-cluster.md),
+[Encrypt traffic between nodes](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/encrypt-node-traffic.md),
+[Monitor a cluster](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/monitor-a-cluster.md),
+[Run a gateway](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/run-a-gateway.md),
+[Back up a cluster](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/back-up-a-cluster.md),
+[Change cluster membership](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/change-cluster-membership.md)
+and [Configuration](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/reference/configuration.md).

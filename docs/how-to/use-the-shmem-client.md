@@ -107,13 +107,13 @@ session envelope and your client's own shape all change them.
 
 ## Where to start
 
-- [`examples/counter/src/bin/counter-client.rs`](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/examples/counter/src/bin/counter-client.rs):
+- [`examples/counter/src/bin/counter-client.rs`](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/examples/counter/src/bin/counter-client.rs):
   a complete `uc_client::Client` program — attach, retry `NotLeader` and
   `Retry`, snapshot and linearizable reads. Its service does not run
   `Sessioned`, which is why it can use the typed `Client`.
-- [Write a service binary](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/write-a-service-binary.md):
+- [Write a service binary](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/write-a-service-binary.md):
   the attach and lifecycle rules a same-host process follows.
-- [Run a cluster on real hosts § Put a client next to every node](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/how-to/run-a-cluster.md#put-a-client-next-to-every-node):
+- [Run a cluster on real hosts § Put a client next to every node](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/how-to/run-a-cluster.md#put-a-client-next-to-every-node):
   the one-client-per-node shape and its two classic mistakes.
-- The measurements: [the M13 gate](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/benchmarks/uc2-m13-gate-2026-08-24.md)
-  and [the M13 hop bench](https://github.com/PeterKnego/ultima_cluster/blob/v2.13.0/docs/benchmarks/uc2-m13-hop-bench-2026-08-24.md).
+- The measurements: [the M13 gate](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/benchmarks/uc2-m13-gate-2026-08-24.md)
+  and [the M13 hop bench](https://github.com/PeterKnego/ultima_cluster/blob/v2.14.0/docs/benchmarks/uc2-m13-hop-bench-2026-08-24.md).

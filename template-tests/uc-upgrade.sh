@@ -18,12 +18,15 @@ snapshot() {
 }
 
 [ -x scripts/uc-upgrade.sh ] || fail "scripts/uc-upgrade.sh missing or not executable"
+# The version this template is pinned to, so the test moves with each UC
+# release step instead of naming one.
+CUR="$(cat UC_VERSION)"; CUR_RE="${CUR//./\\.}"
 
 # --- idempotent: same version, no tracked file changes ----------------------
 before="$(snapshot)"
-UC_UPGRADE_SKIP_INDEX=1 scripts/uc-upgrade.sh 2.13.0 || fail "run at the current version exited non-zero"
+UC_UPGRADE_SKIP_INDEX=1 scripts/uc-upgrade.sh "$CUR" || fail "run at the current version exited non-zero"
 after="$(snapshot)"
-[ "$before" = "$after" ] || fail "uc-upgrade.sh 2.13.0 changed a tracked file while already pinned to 2.13.0"
+[ "$before" = "$after" ] || fail "uc-upgrade.sh $CUR changed a tracked file while already pinned to $CUR"
 
 # --- moves every pin, with a synthetic version so no network is needed ------
 UC_UPGRADE_SKIP_INDEX=1 scripts/uc-upgrade.sh 9.9.9 || fail "uc-upgrade.sh 9.9.9 (skip-index) exited non-zero"
@@ -39,22 +42,23 @@ done
 # historical releases (UC 2.11, 2.12, 2.13.0) and quotes ultima_cluster's own
 # permanent error string (`pre-2.13.0 artifact`) — that text is correct
 # forever and does not track this project's pin (see scripts/uc-upgrade.sh's
-# header comment and docs/how-to/upgrade-uc.md).
-leftover="$(grep -rl '2\.13\.0' --include='*.md' --include='Cargo.toml' --include=UC_VERSION . 2>/dev/null \
+# header comment and docs/how-to/upgrade-uc.md). It names 2.13.0 whatever
+# the pin is, so its count is checked against that literal, not $CUR.
+leftover="$(grep -rl "$CUR_RE" --include='*.md' --include='Cargo.toml' --include=UC_VERSION . 2>/dev/null \
   | grep -vx './docs/troubleshooting.md' || true)"
-[ -z "$leftover" ] || fail "2.13.0 still present outside the documented historical exception: $leftover"
+[ -z "$leftover" ] || fail "$CUR still present outside the documented historical exception: $leftover"
 remaining="$(grep -c '2\.13\.0' docs/troubleshooting.md || true)"
 [ "$remaining" = 3 ] || fail "docs/troubleshooting.md's historical 2.13.0 mentions changed count: expected 3, got $remaining"
 
-# No blob/v2.13.0 or releases/download/v2.13.0 LINK survives ANYWHERE in the
+# No blob/v$CUR or releases/download/v$CUR LINK survives ANYWHERE in the
 # project (not just *.md/.claude/**) — unlike the bare-version check above,
 # this one has no exception: every historical-prose spot that keeps naming
 # 2.13.0 does so without a blob/v or releases/download/v prefix (see
 # scripts/uc-upgrade.sh's header comment), so a real hit here is always a
 # missed link, e.g. the historical upgrade/intent.toml.example regression.
 stale_links="$(grep -rlI --exclude-dir=target --exclude-dir=.git --exclude-dir=.uc --exclude-dir=dist \
-  'blob/v2\.13\.0\|releases/download/v2\.13\.0' . 2>/dev/null || true)"
-[ -z "$stale_links" ] || fail "blob/v2.13.0 or releases/download/v2.13.0 link(s) not rewritten: $stale_links"
+  "blob/v$CUR_RE\\|releases/download/v$CUR_RE" . 2>/dev/null || true)"
+[ -z "$stale_links" ] || fail "blob/v$CUR or releases/download/v$CUR link(s) not rewritten: $stale_links"
 
 # --- refuses a YANKED version (no network: a local fixture sparse-index line)
 # The fixture is test-only (template-tests/fixtures/, never ships — see
@@ -87,7 +91,7 @@ out="$(UC_UPGRADE_INDEX_URL="file://$HERE/fixtures/uc_service-9.9.9.jsonl" scrip
 set -e
 [ "$rc" -ne 0 ] || fail "uc-upgrade.sh 9.9.9 should fail at cargo update (9.9.9 is not a real crate version)"
 [[ "$out" == *"cargo update failed"* && "$out" == *restored* ]] || fail "failure should say cargo update failed and that files were restored: $out"
-[ "$(cat UC_VERSION)" = 2.13.0 ] || fail "UC_VERSION left at $(cat UC_VERSION) after a failed upgrade"
+[ "$(cat UC_VERSION)" = "$CUR" ] || fail "UC_VERSION left at $(cat UC_VERSION) after a failed upgrade"
 [ "$(snapshot)" = "$before" ] || fail "a failed upgrade left docs/pins partly rewritten"
 [ "$(sha256sum Cargo.lock)" = "$lock_before" ] || fail "a failed upgrade changed Cargo.lock"
 ls -d .uc/uc-upgrade-backup.* >/dev/null 2>&1 && fail "backup directory left behind"
